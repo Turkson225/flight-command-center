@@ -1,0 +1,573 @@
+.fcc-nav-map {
+  --map-edge: rgba(125, 173, 197, 0.18);
+  --map-muted: #8ca8b9;
+  --map-cyan: #66ddf3;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--map-edge);
+  border-radius: 18px;
+  background: #0b1b27;
+  color: #e6f4f8;
+  font-family: inherit;
+  box-shadow: 0 16px 54px rgba(0, 5, 12, 0.19), inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.fcc-nav-map:fullscreen {
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+}
+
+.fcc-nav-map:fullscreen .fcc-nav-map__canvas-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.fcc-nav-map__header,
+.fcc-nav-map__position-row,
+.fcc-nav-map__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-inline: 24px;
+}
+
+.fcc-nav-map__header {
+  min-height: 84px;
+  border-bottom: 1px solid var(--map-edge);
+}
+
+.fcc-nav-map__eyebrow,
+.fcc-nav-map__label,
+.fcc-nav-map__gps,
+.fcc-nav-map__datum > span,
+.fcc-nav-map__grid-caption,
+.fcc-nav-map__toolbar button,
+.fcc-nav-map__copy,
+.fcc-nav-map__datum button {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.fcc-nav-map__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--map-cyan);
+}
+
+.fcc-nav-map__eyebrow-line {
+  display: inline-block;
+  width: 15px;
+  height: 2px;
+  background: currentColor;
+}
+
+.fcc-nav-map h2 {
+  margin: 6px 0 0;
+  color: #effaff;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.fcc-nav-map__gps {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.fcc-nav-map__gps--good {
+  color: #69dbb8;
+  background: rgba(33, 155, 120, 0.09);
+}
+
+.fcc-nav-map__gps--lost {
+  color: #ffc27a;
+  background: rgba(205, 127, 46, 0.1);
+}
+
+.fcc-nav-map__gps-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 9px currentColor;
+}
+
+.fcc-nav-map__position-row {
+  min-height: 76px;
+  background: #0d202c;
+}
+
+.fcc-nav-map__label,
+.fcc-nav-map__datum > span {
+  color: var(--map-muted);
+}
+
+.fcc-nav-map__coordinates {
+  margin-top: 5px;
+  color: #effbff;
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.015em;
+}
+
+.fcc-nav-map button {
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.fcc-nav-map button:focus-visible {
+  outline: 2px solid var(--map-cyan);
+  outline-offset: 2px;
+}
+
+.fcc-nav-map button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.fcc-nav-map__copy {
+  padding: 10px 12px;
+  border: 1px solid var(--map-edge);
+  border-radius: 5px;
+  background: #102a39;
+  color: var(--map-cyan);
+  white-space: nowrap;
+}
+
+.fcc-nav-map__copy:hover:not(:disabled),
+.fcc-nav-map__datum button:hover:not(:disabled) {
+  border-color: var(--map-cyan);
+  background: #15384a;
+}
+
+.fcc-nav-map__canvas-wrap {
+  position: relative;
+  overflow: hidden;
+  background: #081520;
+}
+
+.fcc-nav-map__canvas {
+  display: block;
+  width: 100%;
+  max-height: 670px;
+  aspect-ratio: 1000 / 560;
+}
+
+.fcc-nav-map:fullscreen .fcc-nav-map__canvas {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+.fcc-nav-map__grid line {
+  stroke: #537b91;
+  stroke-opacity: 0.16;
+  stroke-width: 1;
+  stroke-dasharray: 2 6;
+}
+
+.fcc-nav-map__grid-labels,
+.fcc-nav-map__north,
+.fcc-nav-map__scale {
+  fill: #7394a5;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.fcc-nav-map__north path {
+  fill: #b9dce9;
+}
+
+.fcc-nav-map__north text {
+  fill: #b9dce9;
+  font-weight: 700;
+}
+
+.fcc-nav-map__scale path {
+  fill: none;
+  stroke: #a0c4d1;
+  stroke-width: 2;
+}
+
+.fcc-nav-map__trail {
+  fill: none;
+  stroke: #66ddf3;
+  stroke-opacity: 0.8;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fcc-nav-map__home-line {
+  stroke: #ebbc6e;
+  stroke-opacity: 0.75;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 6;
+}
+
+.fcc-nav-map__home-ring {
+  fill: rgba(255, 189, 90, 0.08);
+  stroke: rgba(255, 189, 90, 0.5);
+  stroke-width: 1.5;
+}
+
+.fcc-nav-map__home-core {
+  fill: #24312d;
+  stroke: #f3c477;
+  stroke-width: 2;
+}
+
+.fcc-nav-map__home-letter {
+  fill: #f9d493;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fcc-nav-map__reference-ring {
+  fill: #26354d;
+  stroke: #bda8f7;
+  stroke-width: 2;
+}
+
+.fcc-nav-map__reference-letter {
+  fill: #e4d7ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fcc-nav-map__aircraft-ring {
+  fill: rgba(80, 218, 238, 0.06);
+  stroke: rgba(86, 219, 237, 0.64);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.fcc-nav-map__aircraft-ring--stale {
+  stroke: #f0b677;
+}
+
+.fcc-nav-map__aircraft-halo {
+  fill: rgba(60, 202, 230, 0.12);
+}
+
+.fcc-nav-map__aircraft {
+  fill: #e9fcff;
+  stroke: #57dff1;
+  stroke-width: 1.5;
+}
+
+.fcc-nav-map__aircraft--stale {
+  fill: #eac9a5;
+  stroke: #f0b677;
+}
+
+.fcc-nav-map__marker-label {
+  fill: #e1f4f9;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  paint-order: stroke;
+  stroke: #081520;
+  stroke-width: 4;
+}
+
+.fcc-nav-map__grid-caption {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  color: #7f9aab;
+  font-size: 9px;
+  text-align: right;
+  pointer-events: none;
+}
+
+.fcc-nav-map__empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, 85%);
+  padding: 24px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(112, 164, 185, 0.25);
+  border-radius: 8px;
+  background: rgba(9, 25, 37, 0.9);
+  text-align: center;
+}
+
+.fcc-nav-map__empty span {
+  color: #d7e9ef;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.fcc-nav-map__empty small {
+  color: #a2b7c3;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.fcc-nav-map__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 10px 18px;
+  border-block: 1px solid var(--map-edge);
+  background: #0c202e;
+  scrollbar-width: thin;
+}
+
+.fcc-nav-map__toolbar button {
+  flex: 0 0 auto;
+  min-height: 31px;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #98b6c6;
+  white-space: nowrap;
+}
+
+.fcc-nav-map__toolbar button:hover:not(:disabled),
+.fcc-nav-map__toolbar button.is-active {
+  border-color: rgba(91, 203, 226, 0.32);
+  background: rgba(77, 188, 212, 0.11);
+  color: #77e4f5;
+}
+
+.fcc-nav-map__toolbar .fcc-nav-map__zoom {
+  width: 31px;
+  padding: 5px;
+  border-color: var(--map-edge);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.fcc-nav-map__toolbar-spacer {
+  flex: 1;
+  min-width: 10px;
+}
+
+.fcc-nav-map__footer {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0;
+  padding-block: 17px;
+}
+
+.fcc-nav-map__datum {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 0 18px;
+  border-left: 1px solid var(--map-edge);
+}
+
+.fcc-nav-map__datum:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.fcc-nav-map__datum strong {
+  color: #ebfaff;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fcc-nav-map__datum strong small {
+  color: var(--map-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.fcc-nav-map__datum > small {
+  color: var(--map-muted);
+  font-size: 10px;
+}
+
+.fcc-nav-map__datum button {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--map-cyan);
+  text-align: left;
+}
+
+.fcc-nav-map__stale {
+  margin: 0;
+  padding: 10px 24px;
+  border-top: 1px solid rgba(233, 170, 98, 0.25);
+  background: rgba(189, 117, 45, 0.1);
+  color: #ffcb91;
+  font-size: 12px;
+}
+
+@media (max-width: 780px) {
+  .fcc-nav-map__header,
+  .fcc-nav-map__position-row,
+  .fcc-nav-map__footer { padding-inline: 16px; }
+  .fcc-nav-map__footer { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 18px; }
+  .fcc-nav-map__datum:nth-child(3) { padding-left: 0; border-left: 0; }
+  .fcc-nav-map__coordinates { font-size: 13px; }
+  .fcc-nav-map__canvas { min-height: 270px; object-fit: cover; }
+}
+
+@media (max-width: 520px) {
+  .fcc-nav-map__header { min-height: 72px; }
+  .fcc-nav-map h2 { font-size: 17px; }
+  .fcc-nav-map__gps { font-size: 8px; padding: 7px; }
+  .fcc-nav-map__position-row { align-items: flex-start; flex-direction: column; gap: 8px; padding-block: 12px; }
+  .fcc-nav-map__copy { padding: 7px 0; border: 0; background: transparent; }
+  .fcc-nav-map__grid-caption { max-width: 160px; line-height: 1.45; }
+  .fcc-nav-map__datum { padding-left: 12px; }
+  .fcc-nav-map__datum strong { font-size: 14px; }
+}
+
+/* The command and navigation pages supply their own title, coordinates, and facts.
+   In those fixed-height panels, keep the map and its controls inside the plot. */
+.map-shell .fcc-nav-map {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.map-shell .fcc-nav-map__header,
+.map-shell .fcc-nav-map__position-row,
+.map-shell .fcc-nav-map__footer,
+.map-shell .fcc-nav-map__stale {
+  display: none;
+}
+
+.map-shell .fcc-nav-map__canvas-wrap {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.map-shell .fcc-nav-map__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+.map-shell .fcc-nav-map__toolbar {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  gap: 3px;
+  padding: 5px 7px;
+  overflow-x: auto;
+  border: 0;
+  border-top: 1px solid rgba(98, 142, 164, 0.22);
+  background: rgba(8, 23, 34, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.map-shell .fcc-nav-map__toolbar button {
+  min-height: 27px;
+  padding: 5px 7px;
+  font-size: 8px;
+  letter-spacing: 0.07em;
+}
+
+.map-shell .fcc-nav-map__toolbar .fcc-nav-map__zoom {
+  width: 27px;
+  font-size: 14px;
+}
+
+.map-shell .fcc-nav-map__grid-caption {
+  right: 9px;
+  bottom: 43px;
+  font-size: 8px;
+  text-shadow: 0 1px 3px #07131f;
+}
+
+.map-shell .fcc-nav-map__empty {
+  top: 44%;
+  max-width: 310px;
+  padding: 12px;
+}
+
+.map-shell .fcc-nav-map__empty small {
+  font-size: 10px;
+}
+
+/* Fullscreen opens the same embedded map with its full telemetry context. */
+.map-shell .fcc-nav-map:fullscreen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.map-shell .fcc-nav-map:fullscreen .fcc-nav-map__header,
+.map-shell .fcc-nav-map:fullscreen .fcc-nav-map__position-row {
+  display: flex;
+}
+
+.map-shell .fcc-nav-map:fullscreen .fcc-nav-map__footer {
+  display: grid;
+}
+
+.map-shell .fcc-nav-map:fullscreen .fcc-nav-map__stale {
+  display: block;
+}
+
+.map-shell .fcc-nav-map:fullscreen .fcc-nav-map__canvas-wrap {
+  flex: 1;
+  height: auto;
+}
+
+.map-shell .fcc-nav-map:fullscreen .fcc-nav-map__toolbar {
+  position: static;
+  padding: 10px 18px;
+  border-top: 1px solid var(--map-edge);
+  background: #0c202e;
+}
+
+.map-shell .fcc-nav-map:fullscreen .fcc-nav-map__toolbar button {
+  min-height: 31px;
+  padding: 7px 9px;
+  font-size: 10px;
+}
+
+.map-shell .fcc-nav-map:fullscreen .fcc-nav-map__grid-caption {
+  bottom: 14px;
+}
