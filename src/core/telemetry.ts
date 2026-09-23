@@ -121,6 +121,32 @@ export const MAX_HISTORY_SAMPLES = SIMULATION_RATE_HZ * 5 * 60;
 export const STALE_AFTER_MS = 1_500;
 export const LOST_AFTER_MS = 5_000;
 
+/** A fresh packet cannot make an older sensor reading current. */
+export function isCurrentSensor(
+  health: Pick<SensorHealth, 'state' | 'calibrated' | 'lastUpdate'> | null | undefined,
+  sampleTimestamp: number | null | undefined,
+  requireCalibration = false,
+): boolean {
+  return health?.state === 'online' &&
+    (!requireCalibration || health.calibrated === true) &&
+    typeof sampleTimestamp === 'number' && Number.isFinite(sampleTimestamp) &&
+    typeof health.lastUpdate === 'number' && Number.isFinite(health.lastUpdate) &&
+    health.lastUpdate <= sampleTimestamp + 1_000 &&
+    sampleTimestamp - health.lastUpdate < STALE_AFTER_MS;
+}
+
+export function getTelemetryAgeMs(
+  source: TelemetrySource,
+  sample: AircraftTelemetry | null,
+  now: number,
+  receivedAt: number | null = null,
+): number | null {
+  if (!sample) return null;
+  const captureAge = Math.max(0, now - sample.timestamp);
+  const receiptAge = source === 'cloud' && receivedAt !== null ? Math.max(0, now - receivedAt) : 0;
+  return Math.max(captureAge, receiptAge);
+}
+
 export function normalizeHeading(degrees: number): number {
   return ((degrees % 360) + 360) % 360;
 }
@@ -135,10 +161,12 @@ export function getTelemetryStatus(
   sample: AircraftTelemetry | null,
   now: number,
   running = true,
+  receivedAt: number | null = null,
 ): TelemetryStatus {
   if (source === 'offline' || !sample) return 'offline';
-  const age = Math.max(0, now - sample.timestamp);
+  if (source === 'cloud' && (receivedAt === null || receivedAt > now + 5_000 || sample.timestamp > now + 5_000)) return 'reconnecting';
+  const age = getTelemetryAgeMs(source, sample, now, receivedAt) ?? Infinity;
   if (age >= LOST_AFTER_MS) return 'lost';
-  if (!running || age >= STALE_AFTER_MS) return 'stale';
+  if ((source === 'simulation' && !running) || age >= STALE_AFTER_MS) return 'stale';
   return source === 'simulation' ? 'simulation' : 'live';
 }

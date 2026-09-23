@@ -1,0 +1,14 @@
+{
+  "name": "flight-command-center-ingest",
+  "private": true,
+  "version": "0.1.0",
+  "engines": { "node": "22" },
+  "main": "index.js",
+  "scripts": {
+    "check": "node --check index.js && node --test test/*.test.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.0.0"
+  }
+}

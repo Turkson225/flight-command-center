@@ -1,44 +1,67 @@
-# Cloud, direct connectivity and deployment
+# Firebase cloud connectivity and deployment
 
 ## Current state
 
-The frontend deploys as static files. It runs a simulation and has no connected Supabase client, authentication, ESP32 endpoint, persistent storage, or secure command delivery. The optional SQL in `supabase/migrations` is a **proposed backend foundation** and is not applied by `npm run build` or the Pages workflow.
+The GitHub Pages frontend is a static site. It includes a labeled simulation and an optional Firebase Realtime Database reader with Firebase Authentication sign-in. **No Firebase project, owner account, aircraft membership, device credential, Cloud Function, or real ESP32 telemetry has been configured for this installation.** The cloud reader alone does not connect an aircraft, write samples, record a flight, or authorize web flight control. Cloud mode should show an unconfigured, sign-in, waiting, or error state until all relevant pieces exist; it must never quietly substitute simulation values.
 
-## Planned cloud read path
+The earlier optional SQL in [`supabase/migrations`](../supabase/README.md) remains in the repository as a separate, unused design artifact. It is not part of this Firebase path and is not applied by the Pages build.
+
+## Data path and trust boundaries
 
 ```mermaid
 flowchart LR
-  E["ESP32"] -->|"HTTPS + device authentication"| I["Trusted ingestion endpoint"]
-  I -->|"validated writes"| D["Supabase PostgreSQL"]
-  D -->|"RLS-scoped reads / Realtime"| B["Pages browser"]
+  E["ESP32"] -->|"signed HTTPS POST"| I["Trusted Cloud Function"]
+  I -->|"validated server write"| D["Firebase Realtime Database"]
+  D -->|"member-only subscription"| B["Pages browser + Firebase Auth"]
 ```
 
-The ESP32 must not contain a Supabase `service_role` key. A public anon key does not authenticate a device and must not grant direct untrusted telemetry inserts. Build an ingestion service or Edge Function that provisions each aircraft, verifies a per-device credential, applies replay protection and rate limiting, validates payloads, then writes using server-side credentials. Keep these credentials in trusted service secrets. Transport must use TLS with certificate verification; do not use `setInsecure()` for deployment. Because TLS validation depends on time, acquire a valid clock (for example NTP) before HTTPS or use a deliberately maintained certificate trust strategy, and reject requests when verification fails. Buffer only a bounded amount of telemetry during outages and include distinct capture and receipt times.
+The Nano remains responsible for RC processing, actuator outputs, and onboard failsafe. The ESP32 is an observation gateway. A Wi-Fi, Firebase or browser outage must not change the Nano's ability to apply its failsafe. There is no continuous browser-to-servo control path.
 
-One possible ingestion contract is a versioned `POST /ingest/v1/telemetry` with aircraft/device ID, UTC timestamp, unique nonce, bounded JSON body and HMAC-SHA256 over the exact request bytes and metadata. The server looks up the per-device secret, compares signatures in constant time, rejects timestamps outside a short window and reused nonces, validates sensor ranges and per-aircraft rate, and records a server receipt time. Provisioning, rotation, revocation, key storage and an offline buffering policy must be designed and tested before deployment; this is a specification, not a working endpoint. Loss of Internet must not affect onboard RC/failsafe.
+The latest-value node is `/aircraft/{aircraftId}/telemetry/latest`. This abbreviated illustration omits the required nested fields in `sample`:
 
-For later browser reads, use Supabase Auth and RLS for aircraft membership. `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` may be public but do not grant an aircraft role by themselves. The optional migration enables restricted read policies and leaves telemetry/command writes to a trusted backend. Never expose `service_role`, database passwords or device secrets in Vite environment variables, GitHub Pages artifacts, browser local storage, or checked-in firmware.
+```json
+{
+  "schemaVersion": 1,
+  "receivedAt": 1780000000000,
+  "sample": { "aircraftId": "FD-X1", "timestamp": 1780000000000 }
+}
+```
 
-The proposed SQL stores GPS ground speed as `ground_speed_mps`; the browser telemetry model and labels use km/h. A future cloud adapter must convert m/s to km/h exactly once, and keep unit metadata in ingestion tests.
+Here `sample` follows the typed [`AircraftTelemetry`](../src/core/telemetry.ts) model, with nullable unknown measurements and per-sensor health. `sample.timestamp` is the claimed capture time; `receivedAt` is written by the trusted server in Unix milliseconds. Neither a stale source reading nor an old RTDB cache value proves a current link. The browser must use freshness and connectivity checks and label any retained pose or GPS coordinates **last known**. GPS ground speed is km/h in the browser model; magnetic heading is separate from GPS course. Source calibration and validation remain required before either is trusted.
 
-## Planned direct LAN mode
+## Configure a development Firebase project
 
-An HTTPS GitHub Pages document generally cannot open an insecure `http://` or `ws://192.168.x.x` device endpoint due to mixed content and browser private-network restrictions. CORS and network routing add further constraints. A workable field architecture needs deliberate testing of one of these approaches:
+1. [Create a Firebase project](https://firebase.google.com/docs/projects/learn-more) and register a **Web app**. In **Build → Realtime Database**, create the **default database** in **locked mode** and copy its exact `databaseURL`, including its regional host. Do not use permissive test-mode rules for this aircraft project.
+2. In **Authentication → Sign-in method**, enable **Email/Password**. Create an owner account with an address you control and record its Firebase Authentication UID. Firebase web configuration identifies the project; it does not authorize database access by itself.
+3. Review and deploy [`firebase/database.rules.json`](../firebase/database.rules.json), then provision `/memberships/{ownerUid}/aircraft/FD-X1 = true` from a trusted Admin SDK/Console path. Match `FD-X1` to the configured aircraft ID. This boolean membership grants read access; it is not an `OWNER` role field, so provision only accounts you intend to authorize. The rules allow an authenticated member to read the matching aircraft's telemetry and their own membership; they deny browser writes. Test unauthenticated, owner, unrelated account, revoked membership and cross-aircraft reads before accepting real data. Detailed CLI steps are in [`firebase/README.md`](../firebase/README.md).
+4. Copy `.env.example` to `.env.local` for a local build and set the following **public web-app values** from Firebase project settings:
 
-1. Serve the cockpit locally from the ESP32's own HTTP origin for bench-only direct access, with explicit source and security limitations.
-2. Run a trusted local HTTPS/WSS bridge with a valid certificate and explicit authorization, then connect from the Pages app where browser policy permits.
+   ```dotenv
+   VITE_FIREBASE_API_KEY=your_web_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   VITE_FIREBASE_DATABASE_URL=https://your_database_host/
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_APP_ID=your_web_app_id
+   VITE_FIREBASE_AIRCRAFT_ID=FD-X1
+   ```
 
-Do not advise users to disable browser security or infer direct telemetry works just because the ESP32 prints an IP address. Even a local direct path must expose current sample age and clear disconnected state.
+5. Run `npm ci && npm run dev`, open **Telemetry**, sign in with the owner email and password, and choose **Cloud**. Without a valid trusted sample, the display remains empty or waiting; that is expected. Selecting **Simulation** explicitly returns to synthetic data.
+6. For the GitHub Pages build, set the same six `VITE_FIREBASE_*` values in the repository's **Settings → Secrets and variables → Actions → Variables**, then rerun the Pages workflow. The workflow embeds these public values at build time. Do not put an owner password, Firebase Admin credentials or a device HMAC key in repository variables or any `VITE_` setting.
 
-## Applying the optional schema
+Firebase Realtime Database [web setup](https://firebase.google.com/docs/database/web/start), [Security Rules](https://firebase.google.com/docs/database/security/), and [password sign-in](https://firebase.google.com/docs/auth/web/password-auth) explain the console steps. A web API key is a project identifier, not a database password; the authenticated user and deployed Security Rules enforce read access. Add the Pages domain as an authorized Auth domain if the Firebase console requires it.
 
-Read [supabase/README.md](../supabase/README.md) first. Use an isolated Supabase project, review the migration, apply through the Supabase CLI or SQL editor, verify every RLS policy with at least two users and two aircraft, and only then build a backend. No production project ID, passwords, device credentials or deployment authorization are in this repository.
+## Trusted ESP32 ingestion
 
-## GitHub Pages setup
+The browser has **read-only** database access. The ESP32 should send bounded, versioned JSON over certificate-verified HTTPS to the trusted `ingestTelemetry` Cloud Function in [`firebase/functions`](../firebase/functions/). The function authenticates the device with a per-device HMAC secret, checks freshness and replay state, validates aircraft identity and sensor ranges, and attaches `receivedAt` before writing the latest sample with Firebase Admin SDK. The device sends `{schemaVersion:1,sample:<full AircraftTelemetry>}` with `X-FCC-Device-Id`, `X-FCC-Timestamp` and `X-FCC-Signature` headers. The timestamp must be within 15 seconds of the server clock and the captured sample within five seconds of the signed request; consecutive accepted requests must be at least 150 ms apart. The exact signature byte sequence, device provisioning and deployment commands are in [`firebase/README.md`](../firebase/README.md).
 
-1. Push this repository to `Turkson225/flight-command-center` with `main` as the default production branch.
-2. In **Settings → Pages**, set **Source: GitHub Actions**.
-3. Confirm the workflow can install, typecheck/build, upload `dist`, and deploy. Read the actual Actions log for any failed gate.
-4. Visit `https://turkson225.github.io/flight-command-center/` after the Pages environment reports success. Test assets, navigation, a nested refresh, mobile layout and the permanent simulation indicator.
+The device secret belongs in trusted device storage and the server's Secret Manager configuration, never in the Pages bundle, RTDB client rules, or this repository. Deploying Cloud Functions requires the billing-enabled Blaze plan; review the [Firebase pricing plans](https://firebase.google.com/docs/projects/billing/firebase-pricing-plans) before enabling it.
 
-The configured Vite base path is `/flight-command-center/`. GitHub Pages is static hosting, so application navigation must use a Pages-compatible strategy such as hash routes; a pathname-only SPA route would require explicit fallback handling. The Pages release proves only that static assets were deployed. It does not prove an ESP32, Supabase, GPS, or aircraft command is online.
+Use NTP or another valid clock source before ESP32 TLS connections; do not use `setInsecure()` in a deployed gateway. If connectivity fails, drop samples that have aged outside the ingestion window and resume with a current reading rather than replaying stale flight values. Revalidate on receipt and distinguish capture time from server receipt time. Device provisioning, secret rotation/revocation, ingestion rate, retention and field testing are separate deployment work. Applying the RTDB rules or entering web config alone will not publish sensor data.
+
+## Direct LAN mode
+
+Direct ESP32 LAN mode remains unimplemented. An HTTPS GitHub Pages document generally cannot open an insecure `http://` or `ws://192.168.x.x` endpoint due to mixed content and browser private-network restrictions; CORS and routing add constraints. A field design needs deliberate testing of a local-origin cockpit or trusted HTTPS/WSS bridge with explicit authorization. Do not disable browser security to make direct telemetry appear to work. Even a local source must show sample age and a disconnected state.
+
+## GitHub Pages
+
+The production branch is `main`; the deploy workflow builds `dist` and publishes it with GitHub Actions. Vite uses `/flight-command-center/` as the base path. Hash-based navigation supports refreshes on static Pages hosting. Visit the [deployed dashboard](https://turkson225.github.io/flight-command-center/) after a successful workflow run, verify its assets, and check the source banner. A successful Pages release proves that static assets were deployed; it does not prove Firebase rules, ESP32 ingestion, GPS, sensor fusion or an aircraft command path is online.

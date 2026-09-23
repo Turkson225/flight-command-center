@@ -5,9 +5,9 @@
 
 [Repository](https://github.com/Turkson225/flight-command-center) · [Live dashboard](https://turkson225.github.io/flight-command-center/)
 
-Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whose Arduino Nano handles RC and flight-critical control while an ESP32 is planned to aggregate sensor and Nano state. This repository's first milestone is a **simulation-led interface**. It is useful for evaluating navigation displays, alert behavior, status clarity, and responsive layout before hardware integration.
+Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whose Arduino Nano handles RC and flight-critical control while an ESP32 is planned to aggregate sensor and Nano state. The dashboard supports a **labeled simulation** and a Firebase Realtime Database cloud reader that can be configured for authenticated telemetry. It is useful for evaluating navigation displays, alert behavior, status clarity, and responsive layout before hardware integration.
 
-> **Operational status:** Simulation data is synthetic and labeled. This milestone has no verified aircraft connection, sensor readings, cloud ingestion, authentication, persisted flight recording, or aircraft command path. Do not use its displays to operate an aircraft.
+> **Operational status:** The Firebase project, device credentials and aircraft hardware have not been connected or verified. The cloud reader and sign-in interface require your own Firebase setup; selecting Cloud cannot turn simulated values into live aircraft readings. There is no verified cloud ingestion, persistent flight recording or aircraft command path. Do not use these displays to operate an aircraft.
 
 ## Implemented milestone and roadmap
 
@@ -16,10 +16,10 @@ Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whos
 | Cockpit | Responsive primary flight display and aircraft attitude view (roll, pitch and heading), status, navigation/trail, battery, alerts and sensor-health presentation | Calibration and independent validation against actual flight instruments |
 | Navigation map | Interactive OpenStreetMap basemap with aircraft, reported HOME, trail and local grid fallback | Verified live GPS transport and a production tile service for higher traffic |
 | Theme | Light and dark themes with a persistent operator preference | — |
-| Telemetry | Central typed state and a roughly 5 Hz deterministic simulation with selectable fault scenarios | ESP32 sensor drivers, UART decoding, secure ingestion and live telemetry adapter |
-| Data source | Explicit simulation, cloud/direct unavailable states | Cloud and direct adapters with connectivity and freshness tests |
+| Telemetry | Central typed state and a roughly 5 Hz deterministic simulation with selectable fault scenarios | ESP32 sensor drivers, UART decoding, calibrated sensor fusion and verified ingestion |
+| Data source | Explicit simulation and optional Firebase Realtime Database cloud reader with source and freshness labeling; direct LAN remains unavailable | Configure a Firebase project, deploy and test secure device ingestion, connect hardware, and bench-test freshness and faults |
 | Commands | Interface may show command/status concepts | Authorized, audited high-level commands with onboard acknowledgement and interlocks |
-| History/auth | Product design and optional schema foundation | Backend deployment, RLS verification, Supabase Auth, flight recorder, replay and analytics |
+| Auth and history | Firebase email/password sign-in interface for restricted cloud reads; recent browser samples remain in memory | Provision owner account and aircraft membership, deploy and test RTDB rules, add persistent flight recording, replay and analytics |
 | Hosting | Live GitHub Pages deployment from `main`, with Vite configured for `/flight-command-center/` | — |
 
 The simulator includes normal flight, GPS failure, low battery, telemetry loss, and failsafe exercises. Values in a fault state must remain labeled as **simulated**; missing or stale values are not evidence of a safe aircraft state.
@@ -34,9 +34,10 @@ The geographic basemap loads standard OpenStreetMap tiles only for the area on s
 flowchart TB
   RC["RC receiver"] --> Nano["Arduino Nano<br/>RC, servos, flight modes, failsafe"]
   Nano <-->|"versioned UART"| ESP["ESP32<br/>MPU9250 · BMP180 · NEO-7 · voltage"]
-  ESP -->|"future HTTPS ingestion"| Backend["Trusted backend · Supabase"]
-  Backend -->|"future authorized telemetry"| UI["GitHub Pages cockpit"]
-  Sim["Built-in simulation"] -->|"current milestone"| UI
+  ESP -->|"planned authenticated HTTPS"| Ingest["Firebase Cloud Function"]
+  Ingest -->|"validated latest sample"| DB["Firebase Realtime Database"]
+  DB -->|"authorized read"| UI["GitHub Pages cockpit"]
+  Sim["Built-in simulation"] --> UI
 ```
 
 The Nano must keep deterministic RC processing, actuator output, and onboard failsafe independent of the ESP32, Wi-Fi, the cloud, and this browser. The ESP32 is an observation and network gateway; GPS speed is **ground speed**, not airspeed. Battery remaining inferred from voltage is an estimate.
@@ -60,11 +61,11 @@ npm run build
 npm run preview
 ```
 
-The `.env.example` values document future public build settings. `VITE_` variables are embedded in browser JavaScript and are **not secrets**. Configuring a Supabase URL or public anon key alone does not turn on live telemetry. Keep service-role keys, device credentials, Wi-Fi credentials, and database passwords out of the repo and out of Vite variables.
+Copy the Firebase web-app settings and aircraft ID into `.env.local` as shown in [cloud integration](docs/cloud-integration.md). In the dashboard, open **Telemetry**, sign in with an authorized owner account, and select **Cloud**. Until the Firebase project, rules, membership, trusted ingestion service and real ESP32 publisher are configured, Cloud shows no verified aircraft data. `VITE_` variables are embedded in browser JavaScript and are **not secrets**; keep device HMAC keys, Firebase Admin credentials, Wi-Fi passwords and database secrets out of the repo and out of Vite variables.
 
 ## GitHub Pages deployment
 
-The production branch is `main`; the deploy workflow builds the site and publishes the `dist` artifact to GitHub Pages after successful checks. The repository's Pages source is configured for GitHub Actions. Push to `main` to trigger deployment, then check the Actions run and the [live dashboard](https://turkson225.github.io/flight-command-center/).
+The production branch is `main`; the deploy workflow builds the site and publishes the `dist` artifact to GitHub Pages after successful checks. The repository's Pages source is configured for GitHub Actions. Push to `main` to trigger deployment, then check the Actions run and the [live dashboard](https://turkson225.github.io/flight-command-center/). The public Pages deployment remains in simulation until Firebase public build settings and backend resources are configured separately.
 
 Vite's base path is `/flight-command-center/`. Static hosting does not provide server rewrites for arbitrary SPA routes; use the application's Pages-compatible navigation and verify a browser refresh on a nested screen. Never commit `.env.local` or put privileged keys in GitHub Actions build variables. See [deployment and connectivity](docs/cloud-integration.md).
 
@@ -74,10 +75,10 @@ Vite's base path is `/flight-command-center/`. Static hosting does not provide s
 | --- | --- | --- |
 | Arduino Nano | Read RC receiver, generate control outputs, execute failsafe, report state over UART | RC link, actuator direction, endpoints, watchdog, failsafe under power and link faults |
 | ESP32 | Parse UART; read MPU9250, BMP180, NEO-7, voltage sensor; send telemetry | Correct I²C/GPS wiring, calibration, fusion, ADC divider and reference, TLS, timing |
-| Backend | Authenticate devices, validate and store samples, fan out read access | Provisioning, per-aircraft authorization, replay protection, RLS tests, retention |
-| Browser | Display source and freshness; review flights | Real adapter, stale/offline behavior, independent validation |
+| Firebase backend | Authenticate devices at a trusted Cloud Function, validate samples, write RTDB, restrict reads with Firebase Auth and Security Rules | Project provisioning, per-aircraft membership tests, replay protection, ingestion deployment and retention |
+| Browser | Display simulation or authenticated Firebase cloud samples with source and freshness; review recent local samples | Verified aircraft telemetry, stale/offline bench tests, independent validation |
 
-The [UART protocol](docs/uart-protocol.md) is a proposed integration contract, not firmware tested on the aircraft. `firmware/` contains a transport reference and no flight-control sketch. `supabase/` contains an optional schema foundation; it is not deployed by the frontend build.
+The [UART protocol](docs/uart-protocol.md) is a proposed integration contract, not firmware tested on the aircraft. `firmware/` contains a transport reference and no flight-control sketch. `firebase/` contains RTDB rules and a trusted ingestion service that require a separately provisioned Firebase project. `supabase/` contains an earlier optional schema foundation; it is not used by the Firebase cloud reader or deployed by the frontend build.
 
 ## Project structure
 
@@ -86,7 +87,8 @@ src/                 Browser application and simulation
 public/              Static assets
 docs/                Architecture, safety, protocol, connectivity
 firmware/            UART transport reference (no aircraft control)
-supabase/migrations/ Optional database foundation
+firebase/            Realtime Database rules and trusted ingestion service
+supabase/migrations/ Earlier optional schema; not used by Firebase reader
 .github/workflows/    Build and GitHub Pages deployment
 ```
 
@@ -100,5 +102,5 @@ Before any field use, complete the independent ground-test and failure-case chec
 
 1. Implement and bench-test the Nano UART publisher and ESP32 parser against the same vectors in [UART v1](docs/uart-protocol.md).
 2. Integrate calibrated sensors and actual source timestamps, with unavailable values represented as null and per-sensor health.
-3. Deploy a trusted HTTPS ingestion service, configure per-device credentials, and connect the browser cloud adapter to authorized reads.
-4. Add user authentication, RLS tests, recording/replay, audit history, and high-level command state only after end-to-end hardware confirmation.
+3. Set up Firebase Auth and Realtime Database, provision aircraft membership, deploy the trusted HTTPS ingestion service, and test cross-aircraft read denial and device replay rejection.
+4. Connect the ESP32 publisher and verify real values, timing, sensor failures and disconnects on the bench before considering persistent recording, audit history or high-level command state.

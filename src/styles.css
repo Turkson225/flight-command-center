@@ -211,3 +211,8 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(
 @media(max-width:520px){.breadcrumb{display:none}.topbar-left{flex:0 0 auto}.mobile-menu{margin-right:0}}
 
 @media(min-width:761px){.instruments-grid .pfd{height:735px}.instrument-stack>.panel{flex:0 0 auto}.instrument-stack>.power-panel{flex:1}}
+
+.firebase-connection{margin-bottom:13px}
+.simulation-dock.cloud-live{background:#15382e;border-color:#4c9471}
+.simulation-dock.cloud-live .sim-dot{background:#94dbaf}
+[data-theme='light'] .simulation-dock.cloud-live{background:#e5f5eb;border-color:#8abda0}

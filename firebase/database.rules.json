@@ -1,0 +1,22 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "memberships": {
+      "$uid": {
+        "aircraft": {
+          ".read": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+    "aircraft": {
+      "$aircraftId": {
+        "telemetry": {
+          "latest": {
+            ".read": "auth != null && root.child('memberships').child(auth.uid).child('aircraft').child($aircraftId).val() === true"
+          }
+        }
+      }
+    }
+  }
+}

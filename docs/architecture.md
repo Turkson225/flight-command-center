@@ -9,14 +9,14 @@ flowchart TB
   R["RC receiver"] --> N["Nano: control + failsafe"]
   N <-->|"UART v1 state / future requests"| E["ESP32: sensors + telemetry gateway"]
   S["MPU9250 · BMP180 · NEO-7 · voltage"] --> E
-  E -->|"planned HTTPS"| B["Trusted ingestion + storage"]
-  B -->|"planned authenticated read"| U["Cockpit on GitHub Pages"]
-  M["Simulated source"] -->|"available now"| U
+  E -->|"signed HTTPS when implemented"| B["Firebase Function + Realtime Database"]
+  B -->|"member-only read when configured"| U["Cockpit on GitHub Pages"]
+  M["Simulated source"] --> U
 ```
 
 ## Telemetry source state
 
-The browser model should carry an explicit source (`simulation`, `cloud`, `direct`, `offline`), receipt timestamp, and validity/health per measurement. Selecting a planned source that has no adapter must present it as unavailable; it must never quietly switch to simulation and label synthetic values live.
+The browser model carries an explicit source (`simulation`, `cloud`, `direct`, `offline`), receipt timestamp for Firebase cloud samples, and validity/health per measurement. Cloud subscribes to the configured Firebase aircraft node after owner sign-in; direct has no adapter. Selecting an unavailable source must never quietly switch to simulation and label synthetic values live.
 
 | Field | Producer | Units / interpretation | Invalid state |
 | --- | --- | --- | --- |
@@ -36,7 +36,7 @@ The aircraft attitude view should consume roll and pitch from the fused IMU solu
 
 - Target Nano state packet rate: 10 Hz during later bench validation; this is a design target rather than a verified rate.
 - Target visual updates: around 5–10 Hz when actual telemetry supports them; animation between packets does not create new measurements.
-- Historical samples: plan a configurable lower rate such as 1–2 Hz; retain a bounded live chart buffer and apply explicit server retention rather than storing every sensor read forever.
+- Historical samples: the browser retains a bounded chart buffer in memory; Firebase currently stores only the latest sample. Future flight recording needs a deliberate retention policy and independently verified storage.
 - Use monotonic clock time for local packet age; source `uptime_ms` is not synchronized with browser, ESP32, or UTC clocks.
 - Device and backend should attach a trusted receipt timestamp. Capture GPS UTC where available, but do not use an unverified device clock as proof of freshness.
 - An alert needs state (`active`, `acknowledged`, `resolved`), severity, source, timestamps, and a testable threshold with hysteresis. Acknowledging a UI alert is not resolving an aircraft fault.
@@ -51,4 +51,4 @@ The Nano's control loop trusts only its verified RC and onboard inputs. It shoul
 
 ## Milestone status
 
-Current delivery is the browser simulation and visual shell. This document describes the target architecture. It does not assert that wiring, calibration, UART exchange, sensor fusion, cloud ingestion, or flight behavior has been implemented or field tested.
+Current delivery includes the browser simulation, an optional authenticated Firebase reader, and deployable Firebase rules and ingestion code. A Firebase project, credentials and real device publisher have not been configured. This document does not assert that wiring, calibration, UART exchange, sensor fusion, cloud ingestion, or flight behavior has been field tested.

@@ -1,6 +1,6 @@
 # Safety boundary and validation gates
 
-This project is a development dashboard for a fixed-wing UAV. The present milestone uses synthetic telemetry only. It is not a flight controller, a certified flight instrument, or proof of aircraft readiness.
+This project is a development dashboard for a fixed-wing UAV. The public installation currently uses synthetic telemetry; the Firebase reader and ingestion code need a provisioned project and verified hardware. It is not a flight controller, a certified flight instrument, or proof of aircraft readiness.
 
 ## Invariant: onboard control remains local
 
@@ -35,7 +35,7 @@ Mode requests may be considered later only when a versioned command channel, ser
 4. Calibrate MPU9250 orientation, gyro bias and magnetometer; confirm heading alignment and angle sign conventions on a stationary bench and during controlled motion.
 5. Confirm BMP180 pressure reference and filtered vertical speed, and verify NEO-7 fix loss, UTC, ground speed, course, home capture and realistic GPS jumps.
 6. Stress test packet corruption, sequence gaps, timeout, clock wrap, telemetry storage interruption and long sessions. Reboot gateway/backend/browser independently while preserving Nano control.
-7. Verify command permission and RLS with multiple accounts and aircraft, including unauthorized reads/writes and revoked memberships, before enabling cloud data or requests.
+7. Verify Firebase Security Rules with multiple accounts and aircraft, including unauthorized reads/writes and revoked memberships, before enabling cloud data. Test any later command permissions separately before enabling requests.
 8. Conduct progressive ground and flight testing under a qualified operator and applicable local rules only after hardware and software gates pass.
 
 The UI's preflight result is not evidence that an uninstrumented mechanical item, propeller installation, radio range, or safe launch area was checked. Manual checks need explicit human acknowledgement and a real checklist; a synthetic status may never produce SYSTEM READY for a physical aircraft.

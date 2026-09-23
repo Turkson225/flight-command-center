@@ -1,4 +1,4 @@
-import type { SensorHealth, TelemetrySource } from '../core/telemetry'
+import { isCurrentSensor, type SensorHealth, type TelemetrySource } from '../core/telemetry'
 import './aircraft-attitude.css'
 
 export interface AircraftAttitudeProps {
@@ -6,8 +6,9 @@ export interface AircraftAttitudeProps {
   pitch: number | null | undefined
   /** Fused heading in degrees. The magnetometer is an input, not a yaw sensor on its own. */
   heading: number | null | undefined
-  imu?: Pick<SensorHealth, 'state' | 'calibrated'> | null
-  magnetometer?: Pick<SensorHealth, 'state' | 'calibrated'> | null
+  imu?: Pick<SensorHealth, 'state' | 'calibrated' | 'lastUpdate'> | null
+  magnetometer?: Pick<SensorHealth, 'state' | 'calibrated' | 'lastUpdate'> | null
+  sampleTimestamp: number | null
   /** Accepts both useTelemetry's lowercase status and the dashboard's display labels. */
   status: string
   source?: TelemetrySource
@@ -39,16 +40,17 @@ function magnetometerLabel(magnetometer: AircraftAttitudeProps['magnetometer']):
   return magnetometer.calibrated ? 'MAG CALIBRATED' : 'MAG CAL UNKNOWN'
 }
 
-export function AircraftAttitude({ roll, pitch, heading, imu, magnetometer, status, source }: AircraftAttitudeProps) {
-  const imuReady = imu?.state === 'online' && imu.calibrated === true
+export function AircraftAttitude({ roll, pitch, heading, imu, magnetometer, sampleTimestamp, status, source }: AircraftAttitudeProps) {
+  const imuReady = isCurrentSensor(imu, sampleTimestamp, true)
+  const magReady = isCurrentSensor(magnetometer, sampleTimestamp, true)
   const hasRollPitch = imuReady && valid(roll) && valid(pitch)
-  const hasHeading = valid(heading) && magnetometer?.state === 'online' && magnetometer.calibrated === true
+  const hasHeading = valid(heading) && magReady
   const displayHeading = hasHeading ? heading : null
   const state = status.toLowerCase()
   const stale = state.includes('stale') || state.includes('lost') || state.includes('offline') || state.includes('reconnect')
-  const magLabel = stale && magnetometer ? 'MAG LAST RECEIVED' : magnetometerLabel(magnetometer)
-  const imuLabel = !imu ? 'IMU STATUS UNKNOWN' : stale ? 'IMU LAST RECEIVED' : imu.state !== 'online' ? `IMU ${imu.state.toUpperCase()}` : imu.calibrated !== true ? 'IMU NEEDS CALIBRATION' : 'IMU CALIBRATED'
-  const magGood = !stale && magnetometer?.state === 'online' && magnetometer.calibrated === true
+  const magLabel = stale && magnetometer ? 'MAG LAST RECEIVED' : magnetometer?.state === 'online' && magnetometer.calibrated === true && !magReady ? 'MAG UPDATE STALE' : magnetometerLabel(magnetometer)
+  const imuLabel = !imu ? 'IMU STATUS UNKNOWN' : stale ? 'IMU LAST RECEIVED' : imu.state !== 'online' ? `IMU ${imu.state.toUpperCase()}` : imu.calibrated !== true ? 'IMU NEEDS CALIBRATION' : !imuReady ? 'IMU UPDATE STALE' : 'IMU CALIBRATED'
+  const magGood = !stale && magReady
   const visualRoll = hasRollPitch ? Math.max(-85, Math.min(85, roll)) : 0
   const visualPitch = hasRollPitch ? Math.max(-45, Math.min(45, pitch)) : 0
   const normalizedHeading = hasHeading ? ((heading % 360) + 360) % 360 : 0

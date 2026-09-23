@@ -1,0 +1,43 @@
+.firebase-connection{min-width:0}
+.firebase-connection-badge{padding:5px 7px;border:1px solid #4d6872;color:#a9c3cc;font:9px var(--mono);letter-spacing:.08em;white-space:nowrap}
+.firebase-connection-badge.connected{border-color:#40785e;color:#9dd2af;background:#173529}
+.firebase-connection-badge.unconfigured{border-color:#765b3d;color:#dfbd89;background:#2d251b}
+.firebase-connection-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end}
+.firebase-connection-field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.firebase-connection-field label,.firebase-connection-account span,.firebase-connection-status span{font:10px var(--mono);letter-spacing:.1em;color:var(--muted)}
+.firebase-connection-field input{width:100%;min-height:37px;padding:8px 10px;border:1px solid #36515d;border-radius:0;background:#0c1a24;color:var(--text);font:12px 'DM Sans',sans-serif}
+.firebase-connection-field input::placeholder{color:#637d89}
+.firebase-connection-field input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.firebase-connection-button{min-height:37px;padding:8px 12px;border:1px solid #70aeb9;border-radius:0;background:#214953;color:#d8f6f9;font:10px var(--mono);letter-spacing:.07em;white-space:nowrap}
+.firebase-connection-button:hover:not(:disabled){background:#2a6573}
+.firebase-connection-button.secondary{border-color:#557482;background:#182d39;color:#b7d4da}
+.firebase-connection-button.secondary:hover:not(:disabled){background:#274352}
+.firebase-connection-form>.firebase-connection-button{grid-column:1 / -1;justify-self:start;margin-top:2px}
+.firebase-connection-account{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:11px 12px;border:1px solid var(--border);background:var(--panel-alt)}
+.firebase-connection-account div{min-width:0}
+.firebase-connection-account strong{display:block;margin-top:5px;overflow-wrap:anywhere;color:var(--text);font-size:12px;font-weight:600}
+.firebase-connection-empty{padding:12px;border:1px solid #765b3d;background:#2d251b}
+.firebase-connection-empty strong{color:#ebcc9e;font-size:12px}
+.firebase-connection-empty p{margin:5px 0 0;color:#c0ab90;font-size:11px;line-height:1.5}
+.firebase-connection-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:15px;padding-top:12px;border-top:1px solid var(--border-soft)}
+.firebase-connection-status strong{color:var(--text);font:10px var(--mono);overflow-wrap:anywhere}
+.firebase-connection-status p{flex-basis:100%;margin:1px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+.firebase-connection-error{margin:11px 0 0;padding:9px;border-left:2px solid var(--red);background:#351f20;color:#f0b6ac;font-size:11px;line-height:1.5}
+.firebase-connection-note{margin:12px 0 0;color:var(--muted);font-size:10px;line-height:1.5}
+
+[data-theme='light'] .firebase-connection-badge{border-color:#b5cdd5;background:#eef5f7;color:#456f7b}
+[data-theme='light'] .firebase-connection-badge.connected{border-color:#89bea7;background:#e6f4eb;color:#146044}
+[data-theme='light'] .firebase-connection-badge.unconfigured{border-color:#ddb986;background:#fff3df;color:#855115}
+[data-theme='light'] .firebase-connection-field input{border-color:#b8cdd6;background:#fbfdfd;color:#183644}
+[data-theme='light'] .firebase-connection-field input::placeholder{color:#778f9a}
+[data-theme='light'] .firebase-connection-button{border-color:#177b8d;background:#147489;color:#fff}
+[data-theme='light'] .firebase-connection-button:hover:not(:disabled){background:#096073}
+[data-theme='light'] .firebase-connection-button.secondary{border-color:#a3c3cc;background:#eaf3f5;color:#276171}
+[data-theme='light'] .firebase-connection-button.secondary:hover:not(:disabled){background:#d8eaef}
+[data-theme='light'] .firebase-connection-account{background:#f2f8f9}
+[data-theme='light'] .firebase-connection-empty{border-color:#ddbb91;background:#fff6e8}
+[data-theme='light'] .firebase-connection-empty strong{color:#865017}
+[data-theme='light'] .firebase-connection-empty p{color:#705c43}
+[data-theme='light'] .firebase-connection-error{background:#fff0ec;color:#973e36}
+
+@media(max-width:600px){.firebase-connection-form{grid-template-columns:1fr}}

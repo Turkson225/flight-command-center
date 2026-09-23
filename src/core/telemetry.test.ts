@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSimulationSnapshot, navigationToHome } from './simulation';
-import { getTelemetryStatus, normalizeHeading, shortestHeadingDelta } from './telemetry';
+import { getTelemetryAgeMs, getTelemetryStatus, normalizeHeading, shortestHeadingDelta } from './telemetry';
 
 describe('telemetry freshness', () => {
   it('holds the last sample and progresses from simulation to stale to lost', () => {
@@ -12,6 +12,16 @@ describe('telemetry freshness', () => {
     expect(getTelemetryStatus('simulation', sample, sampledAt, false)).toBe('stale');
     expect(getTelemetryStatus('cloud', null, sampledAt)).toBe('offline');
     expect(sample.attitude.roll).not.toBeNull();
+  });
+
+  it('uses both capture and server receipt time for cloud freshness', () => {
+    const sampledAt = 1_700_000_000_000;
+    const sample = createSimulationSnapshot(12, sampledAt);
+    expect(getTelemetryStatus('cloud', sample, sampledAt + 100, false, sampledAt + 50)).toBe('live');
+    expect(getTelemetryStatus('cloud', sample, sampledAt + 2_000, false, sampledAt + 1_900)).toBe('stale');
+    expect(getTelemetryStatus('cloud', sample, sampledAt + 6_000, false, sampledAt + 5_900)).toBe('lost');
+    expect(getTelemetryStatus('cloud', sample, sampledAt + 100)).toBe('reconnecting');
+    expect(getTelemetryAgeMs('cloud', sample, sampledAt + 2_000, sampledAt + 1_900)).toBe(2_000);
   });
 });
 
