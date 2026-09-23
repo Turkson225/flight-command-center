@@ -3,7 +3,7 @@
 **Advanced Flight Navigation, Telemetry & Mission Intelligence Platform**  
 **NAVIGATE · MONITOR · COMMAND · ANALYZE**
 
-[Repository](https://github.com/Turkson225/flight-command-center) · [Planned GitHub Pages address](https://turkson225.github.io/flight-command-center/)
+[Repository](https://github.com/Turkson225/flight-command-center) · [Live dashboard](https://turkson225.github.io/flight-command-center/)
 
 Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whose Arduino Nano handles RC and flight-critical control while an ESP32 is planned to aggregate sensor and Nano state. This repository's first milestone is a **simulation-led interface**. It is useful for evaluating navigation displays, alert behavior, status clarity, and responsive layout before hardware integration.
 
@@ -14,13 +14,17 @@ Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whos
 | Capability | This milestone | Integration still required |
 | --- | --- | --- |
 | Cockpit | Responsive primary flight display, status, navigation/trail, battery, alerts and sensor-health presentation | Calibration and independent validation against actual flight instruments |
+| Navigation map | Interactive OpenStreetMap basemap with aircraft, reported HOME, trail and local grid fallback | Verified live GPS transport and a production tile service for higher traffic |
+| Theme | Light and dark themes with a persistent operator preference | — |
 | Telemetry | Central typed state and a roughly 5 Hz deterministic simulation with selectable fault scenarios | ESP32 sensor drivers, UART decoding, secure ingestion and live telemetry adapter |
 | Data source | Explicit simulation, cloud/direct unavailable states | Cloud and direct adapters with connectivity and freshness tests |
 | Commands | Interface may show command/status concepts | Authorized, audited high-level commands with onboard acknowledgement and interlocks |
 | History/auth | Product design and optional schema foundation | Backend deployment, RLS verification, Supabase Auth, flight recorder, replay and analytics |
-| Hosting | Vite configured for `/flight-command-center/`, deploy workflow | Enabling GitHub Pages and confirming the deployed URL in the repository settings |
+| Hosting | Live GitHub Pages deployment from `main`, with Vite configured for `/flight-command-center/` | — |
 
 The simulator includes normal flight, GPS failure, low battery, telemetry loss, and failsafe exercises. Values in a fault state must remain labeled as **simulated**; missing or stale values are not evidence of a safe aircraft state.
+
+The geographic basemap loads standard OpenStreetMap tiles only for the area on screen. Its attribution stays visible. When tiles cannot load, the local coordinate grid remains available; this is not an offline map or terrain source. Tile service availability is best-effort. See the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/). If real aircraft positions are added later, review the privacy implications of third-party map requests.
 
 ## Intended system architecture
 
@@ -58,7 +62,7 @@ The `.env.example` values document future public build settings. `VITE_` variabl
 
 ## GitHub Pages deployment
 
-The production branch is `main`; the deploy workflow builds the site and publishes the `dist` artifact to GitHub Pages after successful checks. In the GitHub repository, go to **Settings → Pages → Build and deployment**, set **Source: GitHub Actions**, and allow the workflow to run. Push to `main` to trigger deployment, then check the Actions run and Pages environment before treating the planned URL above as live.
+The production branch is `main`; the deploy workflow builds the site and publishes the `dist` artifact to GitHub Pages after successful checks. The repository's Pages source is configured for GitHub Actions. Push to `main` to trigger deployment, then check the Actions run and the [live dashboard](https://turkson225.github.io/flight-command-center/).
 
 Vite's base path is `/flight-command-center/`. Static hosting does not provide server rewrites for arbitrary SPA routes; use the application's Pages-compatible navigation and verify a browser refresh on a nested screen. Never commit `.env.local` or put privileged keys in GitHub Actions build variables. See [deployment and connectivity](docs/cloud-integration.md).
 

@@ -159,6 +159,115 @@
   background: #081520;
 }
 
+.fcc-nav-map__leaflet {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: #081520;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fcc-nav-map__leaflet.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Only raster tiles are tinted. Markers and OSM's attribution retain contrast. */
+.fcc-nav-map[data-theme='dark'] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.78) contrast(1.08) saturate(0.82);
+}
+
+.fcc-nav-map .leaflet-control-attribution {
+  padding: 3px 6px;
+  background: rgba(8, 22, 31, 0.95);
+  color: #e1eef0;
+  font: 10px/1.4 ui-sans-serif, system-ui, sans-serif;
+  text-shadow: none;
+}
+
+.fcc-nav-map .leaflet-control-attribution a {
+  color: #7bdded;
+}
+
+.fcc-leaflet-marker {
+  overflow: visible;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.fcc-leaflet-marker__pulse,
+.fcc-leaflet-marker__plane,
+.fcc-leaflet-marker__disc {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.fcc-leaflet-marker__pulse {
+  width: 37px;
+  height: 37px;
+  border: 1px dashed #52e2ee;
+  border-radius: 50%;
+  background: rgba(7, 42, 52, 0.25);
+  box-shadow: 0 0 0 5px rgba(36, 207, 232, 0.08);
+}
+
+.fcc-leaflet-marker__plane {
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  fill: #e9fcff;
+  stroke: #16788c;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 2px 4px #001a22);
+}
+
+.fcc-leaflet-marker.is-stale .fcc-leaflet-marker__pulse {
+  border-color: #e6b077;
+  box-shadow: 0 0 0 5px rgba(196, 134, 57, 0.1);
+}
+
+.fcc-leaflet-marker.is-stale .fcc-leaflet-marker__plane {
+  fill: #f6d5ac;
+  stroke: #85532c;
+}
+
+.fcc-leaflet-marker__disc {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 2px solid #e3b575;
+  border-radius: 50%;
+  background: #26322c;
+  color: #ffe0aa;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 2px 7px #001a22;
+}
+
+.fcc-leaflet-marker--reference .fcc-leaflet-marker__disc {
+  border-color: #c9aeff;
+  background: #272b4a;
+  color: #ead9ff;
+}
+
+.fcc-leaflet-marker__label {
+  position: absolute;
+  top: 9px;
+  left: 39px;
+  width: max-content;
+  padding: 3px 5px;
+  border-radius: 2px;
+  background: rgba(4, 20, 28, 0.9);
+  color: #e5f5f7;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  box-shadow: 0 1px 4px #0015;
+}
+
 .fcc-nav-map__canvas {
   display: block;
   width: 100%;
@@ -289,16 +398,37 @@
 
 .fcc-nav-map__grid-caption {
   position: absolute;
+  z-index: 2;
   right: 18px;
-  bottom: 14px;
+  top: 12px;
+  width: max-content;
+  max-width: 56%;
+  padding: 4px 6px;
+  background: rgba(5, 22, 32, 0.83);
   color: #7f9aab;
   font-size: 9px;
   text-align: right;
   pointer-events: none;
 }
 
+.fcc-nav-map__sim-tag {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 12px;
+  padding: 5px 7px;
+  border: 1px solid rgba(229, 183, 105, 0.55);
+  background: rgba(41, 33, 23, 0.91);
+  color: #f6d59c;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  pointer-events: none;
+}
+
 .fcc-nav-map__empty {
   position: absolute;
+  z-index: 3;
   top: 50%;
   left: 50%;
   display: flex;
@@ -488,7 +618,7 @@
 
 .map-shell .fcc-nav-map__toolbar {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   right: 0;
   bottom: 0;
   left: 0;
@@ -499,6 +629,11 @@
   border-top: 1px solid rgba(98, 142, 164, 0.22);
   background: rgba(8, 23, 34, 0.92);
   backdrop-filter: blur(8px);
+}
+
+/* The compact toolbar covers the map bottom. Lift copyright above it. */
+.map-shell .fcc-nav-map:not(:fullscreen) .leaflet-bottom.leaflet-right {
+  bottom: 43px;
 }
 
 .map-shell .fcc-nav-map__toolbar button {
@@ -515,7 +650,7 @@
 
 .map-shell .fcc-nav-map__grid-caption {
   right: 9px;
-  bottom: 43px;
+  top: 10px;
   font-size: 8px;
   text-shadow: 0 1px 3px #07131f;
 }
@@ -569,5 +704,56 @@
 }
 
 .map-shell .fcc-nav-map:fullscreen .fcc-nav-map__grid-caption {
-  bottom: 14px;
+  top: 14px;
+}
+
+.fcc-nav-map[data-theme='light'] {
+  --map-edge: rgba(55, 99, 111, 0.24);
+  --map-muted: #5c7580;
+  --map-cyan: #075e77;
+  background: #e9f2f3;
+  color: #203b49;
+}
+
+.fcc-nav-map[data-theme='light'] .fcc-nav-map__header,
+.fcc-nav-map[data-theme='light'] .fcc-nav-map__footer,
+.fcc-nav-map[data-theme='light'] .fcc-nav-map__toolbar,
+.fcc-nav-map[data-theme='light'] .fcc-nav-map__position-row {
+  background: #e8f1f3;
+}
+
+.fcc-nav-map[data-theme='light'] h2,
+.fcc-nav-map[data-theme='light'] .fcc-nav-map__coordinates,
+.fcc-nav-map[data-theme='light'] .fcc-nav-map__datum strong {
+  color: #193b4a;
+}
+
+.fcc-nav-map[data-theme='light'] .fcc-nav-map__copy {
+  background: #f8fcfc;
+}
+
+.fcc-nav-map[data-theme='light'] .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.95);
+  color: #334c53;
+}
+
+.fcc-nav-map[data-theme='light'] .leaflet-control-attribution a {
+  color: #085f82;
+}
+
+.fcc-nav-map[data-theme='light'] .fcc-nav-map__toolbar button {
+  color: #385d6a;
+}
+
+.fcc-nav-map[data-theme='light'] .fcc-nav-map__toolbar button:hover,
+.fcc-nav-map[data-theme='light'] .fcc-nav-map__toolbar button.is-active {
+  color: #075e77;
+}
+
+.map-shell .fcc-nav-map[data-theme='light']:not(:fullscreen) .fcc-nav-map__toolbar {
+  background: rgba(242, 249, 250, 0.96);
+}
+
+.map-shell .fcc-nav-map[data-theme='light']:fullscreen .fcc-nav-map__toolbar {
+  background: #e8f1f3;
 }

@@ -1,9 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { AircraftTelemetry } from '../core/telemetry';
+import * as L from 'leaflet';
+import type { AircraftTelemetry, TelemetrySource } from '../core/telemetry';
+import 'leaflet/dist/leaflet.css';
 import './navigation-map.css';
 
 type Coordinate = { latitude: number; longitude: number; timestamp: number };
-type ViewMode = 'follow' | 'home' | 'reference' | 'fit';
+type ViewMode = 'follow' | 'home' | 'reference' | 'fit' | 'manual';
+
+type MapLayers = {
+  aircraft: L.Marker;
+  home: L.Marker;
+  reference: L.Marker;
+  trail: L.Polyline;
+  homeLine: L.Polyline;
+};
+
+const MAP_ZOOM = 16;
+const FOLLOW_INTERVAL_MS = 1_500;
+const FOLLOW_DISTANCE_METRES = 25;
+const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+function icon(kind: 'aircraft' | 'home' | 'reference', stale = false, heading = 0): L.DivIcon {
+  if (kind === 'aircraft') {
+    return L.divIcon({
+      className: `fcc-leaflet-marker fcc-leaflet-marker--aircraft${stale ? ' is-stale' : ''}`,
+      html: `<span class="fcc-leaflet-marker__pulse"></span><svg class="fcc-leaflet-marker__plane" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(${heading}deg)"><path d="M18 2 22 16 32 23 32 28 21 24 20 33 16 33 15 24 4 28 4 23 14 16Z" /></svg><span class="fcc-leaflet-marker__label">${stale ? 'LAST KNOWN' : 'AIRCRAFT'}</span>`,
+      iconSize: [34, 34], iconAnchor: [17, 17],
+    });
+  }
+  return L.divIcon({
+    className: `fcc-leaflet-marker fcc-leaflet-marker--${kind}`,
+    html: `<span class="fcc-leaflet-marker__disc">${kind === 'home' ? 'H' : 'R'}</span><span class="fcc-leaflet-marker__label">${kind === 'home' ? 'AIRCRAFT HOME' : 'LOCAL REF'}</span>`,
+    iconSize: [28, 28], iconAnchor: [14, 14],
+  });
+}
 
 const WIDTH = 1000;
 const HEIGHT = 560;
@@ -74,11 +104,20 @@ function fitCenter(points: Coordinate[], fallback: Coordinate): Coordinate {
 export function NavigationMap({
   snapshot,
   history,
+  theme = 'dark',
+  source,
 }: {
   snapshot: AircraftTelemetry | null;
   history: AircraftTelemetry[];
+  theme?: 'dark' | 'light';
+  source?: TelemetrySource;
 }) {
   const mapRef = useRef<HTMLElement>(null);
+  const leafletContainerRef = useRef<HTMLDivElement>(null);
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const leafletLayersRef = useRef<MapLayers | null>(null);
+  const markerStaleRef = useRef<boolean | null>(null);
+  const lastAutoPanRef = useRef(0);
   const previousAircraftId = useRef<string | null>(null);
   const [lastPosition, setLastPosition] = useState<Coordinate | null>(null);
   const [localReference, setLocalReference] = useState<Coordinate | null>(null);
@@ -87,11 +126,14 @@ export function NavigationMap({
   const [zoom, setZoom] = useState(1);
   const [copyStatus, setCopyStatus] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [tileState, setTileState] = useState<'waiting' | 'ready' | 'unavailable'>('waiting');
+  const [manualCenter, setManualCenter] = useState<Coordinate | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const sampleAgeMs = snapshot ? Math.max(0, now - snapshot.timestamp) : Infinity;
   const samplePosition = isValidPosition(snapshot) ? coordinateOf(snapshot) : null;
-  const hasFix = Boolean(samplePosition && sampleAgeMs < 1_500);
+  const gpsAgeMs = snapshot?.navigation.gpsUpdatedAt == null ? Infinity : Math.max(0, now - snapshot.navigation.gpsUpdatedAt);
+  const hasFix = Boolean(samplePosition && sampleAgeMs < 1_500 && gpsAgeMs < 1_500);
   const livePosition = hasFix ? samplePosition : null;
   const deviceHome = snapshot &&
     typeof snapshot.navigation.homeLatitude === 'number' &&
@@ -174,7 +216,8 @@ export function NavigationMap({
   const reference = position ?? deviceHome ?? displayReference ?? { latitude: 0, longitude: 0, timestamp: 0 };
   const visiblePoints = showTrail ? trail : [];
   const fitPoints = [...visiblePoints, ...(position ? [position] : []), ...(deviceHome ? [deviceHome] : []), ...(displayReference ? [displayReference] : [])];
-  const center = viewMode === 'home' && deviceHome ? deviceHome
+  const center = viewMode === 'manual' && manualCenter ? manualCenter
+    : viewMode === 'home' && deviceHome ? deviceHome
     : viewMode === 'reference' && displayReference ? displayReference
       : viewMode === 'fit' ? fitCenter(fitPoints, reference) : reference;
   const cosineLatitude = Math.max(0.01, Math.cos((center.latitude * Math.PI) / 180));
@@ -204,6 +247,172 @@ export function NavigationMap({
   const niceScale = 10 ** Math.floor(Math.log10(scaleMetres)) * [1, 2, 5, 10].find((step) => step * 10 ** Math.floor(Math.log10(scaleMetres)) >= scaleMetres * 0.65)!;
   const scalePixels = niceScale / metresPerPixel;
 
+  // The map only mounts after a valid position exists. Empty cloud/direct sources
+  // never request tiles. The SVG plot below remains available if tiles cannot load.
+  const hasMapPosition = Boolean(position);
+  useEffect(() => {
+    const element = leafletContainerRef.current;
+    if (!hasMapPosition || !element || leafletMapRef.current) return;
+    const initial = position as Coordinate;
+    const map = L.map(element, {
+      zoomControl: false,
+      scrollWheelZoom: false,
+      worldCopyJump: true,
+      preferCanvas: true,
+      minZoom: 3,
+      maxZoom: 18,
+    }).setView([initial.latitude, initial.longitude], MAP_ZOOM);
+    leafletMapRef.current = map;
+
+    const layers: MapLayers = {
+      aircraft: L.marker([initial.latitude, initial.longitude], { icon: icon('aircraft') }).addTo(map),
+      home: L.marker([initial.latitude, initial.longitude], { icon: icon('home') }),
+      reference: L.marker([initial.latitude, initial.longitude], { icon: icon('reference') }),
+      trail: L.polyline([], { color: '#36d4eb', weight: 3, opacity: 0.86, interactive: false }).addTo(map),
+      homeLine: L.polyline([], { color: '#e6ae61', weight: 2, opacity: 0.9, dashArray: '6 6', interactive: false }).addTo(map),
+    };
+    leafletLayersRef.current = layers;
+    map.on('dragstart', () => setViewMode('manual'));
+    map.on('moveend', () => {
+      const location = map.getCenter();
+      setManualCenter({ latitude: location.lat, longitude: location.lng, timestamp: Date.now() });
+    });
+    map.on('zoomend', () => setZoom(2 ** (MAP_ZOOM - map.getZoom())));
+
+    let tileTimer: number | undefined;
+    let consecutiveErrors = 0;
+    let loadedInBatch = false;
+    const tiles = L.tileLayer(TILE_URL, {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>',
+      maxZoom: 18,
+      keepBuffer: 1,
+      updateWhenIdle: true,
+    });
+    const waitForTiles = () => {
+      window.clearTimeout(tileTimer);
+      tileTimer = window.setTimeout(() => setTileState('unavailable'), 10_000);
+    };
+    tiles.on('loading', () => {
+      loadedInBatch = false;
+      waitForTiles();
+    });
+    tiles.on('tileload', () => {
+      loadedInBatch = true;
+      consecutiveErrors = 0;
+      window.clearTimeout(tileTimer);
+      setTileState('ready');
+    });
+    tiles.on('tileerror', (event) => {
+      // Hide broken-image placeholders; a readable local grid is available below.
+      (event.tile as HTMLImageElement).style.visibility = 'hidden';
+      consecutiveErrors += 1;
+      if (consecutiveErrors >= 4) {
+        window.clearTimeout(tileTimer);
+        setTileState('unavailable');
+      }
+    });
+    tiles.on('load', () => {
+      if (!loadedInBatch && consecutiveErrors > 0) {
+        window.clearTimeout(tileTimer);
+        setTileState('unavailable');
+      }
+    });
+    const onOffline = () => {
+      window.clearTimeout(tileTimer);
+      setTileState('unavailable');
+    };
+    const onOnline = () => {
+      setTileState('waiting');
+      consecutiveErrors = 0;
+      waitForTiles();
+      if (map.hasLayer(tiles)) tiles.redraw();
+      else tiles.addTo(map);
+    };
+    if (navigator.onLine) {
+      waitForTiles();
+      tiles.addTo(map);
+    } else setTileState('unavailable');
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('online', onOnline);
+    const observer = new ResizeObserver(() => map.invalidateSize({ pan: false }));
+    observer.observe(element);
+    return () => {
+      window.clearTimeout(tileTimer);
+      observer.disconnect();
+      window.removeEventListener('offline', onOffline);
+      window.removeEventListener('online', onOnline);
+      map.remove();
+      leafletMapRef.current = null;
+      leafletLayersRef.current = null;
+      markerStaleRef.current = null;
+    };
+    // Once mounted, overlays are updated by the separate telemetry effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMapPosition]);
+
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    const layers = leafletLayersRef.current;
+    if (!map || !layers || !position) return;
+    const point: L.LatLngExpression = [position.latitude, position.longitude];
+    layers.aircraft.setLatLng(point);
+    if (markerStaleRef.current !== !hasFix) {
+      layers.aircraft.setIcon(icon('aircraft', !hasFix, safeHeading));
+      markerStaleRef.current = !hasFix;
+    } else {
+      const plane = layers.aircraft.getElement()?.querySelector<SVGElement>('.fcc-leaflet-marker__plane');
+      if (plane) plane.style.transform = `rotate(${safeHeading}deg)`;
+    }
+    if (deviceHome) {
+      layers.home.setLatLng([deviceHome.latitude, deviceHome.longitude]);
+      if (!map.hasLayer(layers.home)) layers.home.addTo(map);
+      layers.homeLine.setLatLngs([[position.latitude, position.longitude], [deviceHome.latitude, deviceHome.longitude]]);
+    } else {
+      layers.home.remove();
+      layers.homeLine.setLatLngs([]);
+    }
+    if (displayReference) {
+      layers.reference.setLatLng([displayReference.latitude, displayReference.longitude]);
+      if (!map.hasLayer(layers.reference)) layers.reference.addTo(map);
+    } else layers.reference.remove();
+    layers.trail.setLatLngs(showTrail ? trail.map((sample) => [sample.latitude, sample.longitude] as L.LatLngTuple) : []);
+  }, [position?.latitude, position?.longitude, position?.timestamp, hasFix, safeHeading, deviceHome?.latitude, deviceHome?.longitude, displayReference?.latitude, displayReference?.longitude, showTrail, trail]);
+
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map || viewMode !== 'follow' || !livePosition) return;
+    const elapsed = Date.now() - lastAutoPanRef.current;
+    if (elapsed < FOLLOW_INTERVAL_MS) return;
+    const destination = L.latLng(livePosition.latitude, livePosition.longitude);
+    if (map.distance(map.getCenter(), destination) >= FOLLOW_DISTANCE_METRES) {
+      map.panTo(destination, { animate: false });
+      lastAutoPanRef.current = Date.now();
+    }
+  }, [livePosition?.latitude, livePosition?.longitude, viewMode]);
+
+  function selectView(mode: ViewMode) {
+    setViewMode(mode);
+    const map = leafletMapRef.current;
+    if (!map) return;
+    if (mode === 'fit') {
+      const points = fitPoints.length ? fitPoints : [reference];
+      map.fitBounds(L.latLngBounds(points.map((point) => [point.latitude, point.longitude] as L.LatLngTuple)), {
+        padding: [35, 35], maxZoom: 17, animate: false,
+      });
+    } else {
+      const target = mode === 'home' ? deviceHome : mode === 'reference' ? displayReference : position;
+      if (target) map.panTo([target.latitude, target.longitude], { animate: false });
+      if (mode === 'follow') lastAutoPanRef.current = Date.now();
+    }
+  }
+
+  function zoomMap(direction: 'in' | 'out') {
+    const map = leafletMapRef.current;
+    if (map && tileState === 'ready') {
+      if (direction === 'in') map.zoomIn(); else map.zoomOut();
+    } else setZoom((value) => direction === 'in' ? Math.max(0.2, value / 1.5) : Math.min(20, value * 1.5));
+  }
+
   async function copyCoordinates() {
     if (!position) return;
     try {
@@ -221,10 +430,10 @@ export function NavigationMap({
   }
 
   return (
-    <section className="fcc-nav-map" ref={mapRef} aria-label="Aircraft navigation map">
+    <section className="fcc-nav-map" data-theme={theme} ref={mapRef} aria-label="Aircraft navigation map">
       <header className="fcc-nav-map__header">
         <div>
-          <div className="fcc-nav-map__eyebrow"><span className="fcc-nav-map__eyebrow-line" /> NAVIGATION / LOCAL GRID</div>
+          <div className="fcc-nav-map__eyebrow"><span className="fcc-nav-map__eyebrow-line" /> NAVIGATION / {tileState === 'ready' ? 'GEOGRAPHIC MAP' : 'LOCAL GRID'} {source === 'simulation' ? '· SIMULATION' : ''}</div>
           <h2>Aircraft position</h2>
         </div>
         <div className={`fcc-nav-map__gps ${hasFix ? 'fcc-nav-map__gps--good' : 'fcc-nav-map__gps--lost'}`} role="status">
@@ -245,7 +454,7 @@ export function NavigationMap({
       </div>
 
       <div className="fcc-nav-map__canvas-wrap">
-        <svg className="fcc-nav-map__canvas" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={position ? `Local geographic grid with aircraft at ${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)}${hasFix ? '' : ', last known location'}` : 'Local geographic grid waiting for GPS position'}>
+        <svg className="fcc-nav-map__canvas" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-hidden={tileState === 'ready' && Boolean(position)} aria-label={position ? `Local geographic grid with aircraft at ${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)}${hasFix ? '' : ', last known location'}` : 'Local geographic grid waiting for GPS position'}>
           <defs>
             <radialGradient id="fcc-map-glow"><stop offset="0" stopColor="#133448" stopOpacity="0.75" /><stop offset="1" stopColor="#07131f" stopOpacity="0" /></radialGradient>
             <clipPath id="fcc-map-bounds"><rect x="0" y="0" width={WIDTH} height={HEIGHT} /></clipPath>
@@ -284,21 +493,30 @@ export function NavigationMap({
           <g className="fcc-nav-map__north" transform="translate(950 50)" aria-hidden="true"><path d="M 0 -16 L 8 9 L 0 5 L -8 9 Z" /><text textAnchor="middle" y="28">N</text></g>
           <g className="fcc-nav-map__scale" transform="translate(28 520)" aria-hidden="true"><path d={`M 0 -7 V 0 H ${scalePixels} V -7`} /><text x="0" y="-12">{formatDistance(niceScale)}</text></g>
         </svg>
+        <div
+          ref={leafletContainerRef}
+          className={`fcc-nav-map__leaflet ${tileState === 'ready' && position ? 'is-visible' : ''}`}
+          role="region"
+          aria-hidden={tileState !== 'ready' || !position}
+          inert={tileState !== 'ready' || !position}
+          aria-label={tileState === 'ready' ? `Geographic map showing ${hasFix ? 'current' : 'last known'} aircraft position and ground track` : 'Geographic tiles unavailable; local coordinate grid shown'}
+        />
         {!position && <div className="fcc-nav-map__empty"><span>NO VALID POSITION</span><small>Waiting for an aircraft GPS fix. The grid does not show map tiles or terrain.</small></div>}
-        <span className="fcc-nav-map__grid-caption">LOCAL COORDINATE GRID · NORTH UP · NO BASEMAP</span>
+        {source === 'simulation' && position && <span className="fcc-nav-map__sim-tag">SIMULATED POSITION</span>}
+        <span className="fcc-nav-map__grid-caption">{tileState === 'ready' && position ? 'NORTH UP · OPENSTREETMAP BASEMAP' : tileState === 'waiting' && position ? 'LOADING GEOGRAPHIC TILES · LOCAL GRID' : 'LOCAL COORDINATE GRID · NO BASEMAP'}</span>
       </div>
 
       <div className="fcc-nav-map__toolbar" aria-label="Map controls">
-        <button type="button" className={viewMode === 'follow' ? 'is-active' : ''} onClick={() => setViewMode('follow')} disabled={!position}>FOLLOW AIRCRAFT</button>
-        <button type="button" className={viewMode === 'home' ? 'is-active' : ''} onClick={() => setViewMode('home')} disabled={!deviceHome}>CENTER HOME</button>
-        {displayReference && <button type="button" className={viewMode === 'reference' ? 'is-active' : ''} onClick={() => setViewMode('reference')}>CENTER LOCAL REF</button>}
-        <button type="button" className={viewMode === 'fit' ? 'is-active' : ''} onClick={() => setViewMode('fit')} disabled={!position}>FIT TRAIL</button>
+        <button type="button" className={viewMode === 'follow' ? 'is-active' : ''} onClick={() => selectView('follow')} disabled={!position}>FOLLOW AIRCRAFT</button>
+        <button type="button" className={viewMode === 'home' ? 'is-active' : ''} onClick={() => selectView('home')} disabled={!deviceHome}>CENTER HOME</button>
+        {displayReference && <button type="button" className={viewMode === 'reference' ? 'is-active' : ''} onClick={() => selectView('reference')}>CENTER LOCAL REF</button>}
+        <button type="button" className={viewMode === 'fit' ? 'is-active' : ''} onClick={() => selectView('fit')} disabled={!position}>FIT TRAIL</button>
         <button type="button" className={showTrail ? 'is-active' : ''} onClick={() => setShowTrail((shown) => !shown)} aria-pressed={showTrail}>{showTrail ? 'TRAIL ON' : 'TRAIL OFF'}</button>
         <button type="button" onClick={() => { if (livePosition) setLocalReference(livePosition); }} disabled={!livePosition}>{displayReference ? 'MOVE LOCAL REF HERE' : 'SET LOCAL REF HERE'}</button>
         {displayReference && <button type="button" onClick={() => { setLocalReference(null); if (viewMode === 'reference') setViewMode('follow'); }}>CLEAR LOCAL REF</button>}
         <span className="fcc-nav-map__toolbar-spacer" />
-        <button type="button" className="fcc-nav-map__zoom" aria-label="Zoom in" onClick={() => setZoom((value) => Math.max(0.2, value / 1.5))}>+</button>
-        <button type="button" className="fcc-nav-map__zoom" aria-label="Zoom out" onClick={() => setZoom((value) => Math.min(20, value * 1.5))}>−</button>
+        <button type="button" className="fcc-nav-map__zoom" aria-label="Zoom in" onClick={() => zoomMap('in')}>+</button>
+        <button type="button" className="fcc-nav-map__zoom" aria-label="Zoom out" onClick={() => zoomMap('out')}>−</button>
         <button type="button" onClick={toggleFullscreen}>{isFullscreen ? 'EXIT FULLSCREEN' : 'FULLSCREEN'}</button>
       </div>
 

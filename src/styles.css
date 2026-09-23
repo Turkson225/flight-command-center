@@ -47,3 +47,165 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(
 .global-state.lost{border-color:#915b49;background:#382723;color:#f0b7a3}.global-state.lost .dot{background:#ee9c84;box-shadow:0 0 0 3px #ee9c8422}
 .horizon-frame.stale-instrument .horizon-scene{filter:grayscale(.45) brightness(.65)}
 .pfd-stale-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;background:#332a25ef;border:1px solid #c29364;color:#f0c391;padding:7px 10px;font:10px var(--mono);letter-spacing:.05em;white-space:nowrap}
+
+/* A cockpit display stays dark in either mode. The surrounding workspace switches
+   to a daylight palette with independent contrast for labels and status colors. */
+.theme-button{flex:none;border-color:#3c6472;color:#addce5;background:#17303b}
+.theme-button:hover:not(:disabled){border-color:var(--cyan);color:#ecf8f9}
+
+:root[data-theme='light']{
+  color-scheme:light;
+  color:#183644;
+  background:#f4f7f8;
+  --bg:#f4f7f8;
+  --sidebar:#e9f0f3;
+  --panel:#ffffff;
+  --panel-alt:#f2f7f9;
+  --border:#cbdce3;
+  --border-soft:#d5e2e8;
+  --text:#183644;
+  --muted:#587482;
+  --dim:#668391;
+  --cyan:#076d80;
+  --green:#147257;
+  --amber:#965b17;
+  --red:#ae4639;
+}
+
+[data-theme='light'] ::selection{background:#bddfe6;color:#133441}
+[data-theme='light'] body{color:var(--text);background:var(--bg)}
+[data-theme='light'] .app-shell{background:radial-gradient(circle at 72% -8%,rgba(89,153,172,.11),transparent 32%),var(--bg)}
+[data-theme='light'] .sidebar{background:linear-gradient(180deg,#edf4f6,#e5eef2);border-color:#cbdce3}
+[data-theme='light'] .brand-mark{border-color:#3b8999;color:#076d80}
+[data-theme='light'] .brand strong{color:#173744}
+[data-theme='light'] .brand strong span{color:#077c8e}
+[data-theme='light'] .aircraft-name,[data-theme='light'] .source-readout{background:#fff;border-color:#c8dae1}
+[data-theme='light'] .aircraft-monogram{border-color:#8db5be;color:#086e80}
+[data-theme='light'] .aircraft-name strong,[data-theme='light'] .source-readout strong{color:#193946}
+[data-theme='light'] .nav-section{color:#607d89}
+[data-theme='light'] .nav-link{color:#405e6d}
+[data-theme='light'] .nav-link svg{color:#527786}
+[data-theme='light'] .nav-link:hover{color:#133c4c;background:#dbe9ed}
+[data-theme='light'] .nav-link.active{color:#075f71;border-color:#a6cad3;background:#d8eaf0;box-shadow:inset 3px 0 0 var(--cyan)}
+[data-theme='light'] .nav-link.active svg{color:#076d80}
+[data-theme='light'] .nav-link b{color:#875213;background:#f2dfbe}
+[data-theme='light'] .sidebar-version,[data-theme='light'] .sidebar-version b{color:#55717f}
+[data-theme='light'] .topbar{background:rgba(250,253,253,.94);border-color:#d2e1e7;box-shadow:0 3px 15px rgba(26,63,81,.035)}
+[data-theme='light'] .breadcrumb{color:#607a87}
+[data-theme='light'] .breadcrumb span{color:#91a7b1}
+[data-theme='light'] .breadcrumb strong{color:#244451}
+[data-theme='light'] .top-data{border-color:#ccdce2}
+[data-theme='light'] .top-data span,[data-theme='light'] .utc-clock span{color:#607b88}
+[data-theme='light'] .top-data b,[data-theme='light'] .utc-clock strong{color:#183b49}
+[data-theme='light'] .global-state{border-color:#9bc8c0;background:#e3f3ec;color:#176850}
+[data-theme='light'] .global-state.stale,[data-theme='light'] .global-state.offline,[data-theme='light'] .global-state.no.data{border-color:#e6c69b;background:#fff0d8;color:#8d5213}
+[data-theme='light'] .global-state.lost{border-color:#e1afa4;background:#fff0ea;color:#9d3e32}
+[data-theme='light'] .icon-button{border-color:#bfd3dc;background:#f9fcfd;color:#2e6877}
+[data-theme='light'] .icon-button:hover:not(:disabled){background:#e3f2f5;color:#075e70}
+[data-theme='light'] .theme-button{background:#def0f4;border-color:#9ec7d1;color:#076b7d}
+[data-theme='light'] .theme-button:hover:not(:disabled){background:#cde7ee;color:#064e60}
+[data-theme='light'] .operator{border-color:#a7c0cb;color:#3a6879;background:#f5fafb}
+[data-theme='light'] h1{color:#163744}
+[data-theme='light'] .page-title-row p,[data-theme='light'] .normal-copy{color:#536e7d}
+[data-theme='light'] .session-clock{border-color:#5d98a8}
+[data-theme='light'] .session-clock span,[data-theme='light'] .session-clock small{color:#617e8b}
+[data-theme='light'] .session-clock strong{color:#254653}
+[data-theme='light'] .source-banner{border-color:#dfc7a9;background:#fff4e8}
+[data-theme='light'] .source-banner.sim{border-color:#aacdd4;background:linear-gradient(90deg,#e3f3f6,#f1f8fa)}
+[data-theme='light'] .banner-icon{border-color:#c4a47d;color:#925919}
+[data-theme='light'] .sim .banner-icon{color:#086c7d;border-color:#87bdc9}
+[data-theme='light'] .source-banner strong{color:#815018}
+[data-theme='light'] .source-banner.sim strong{color:#086779}
+[data-theme='light'] .source-banner p,[data-theme='light'] .source-banner.sim p{color:#526d7a}
+[data-theme='light'] .banner-code,[data-theme='light'] .sim .banner-code{color:#5d7783}
+[data-theme='light'] .stale-banner{border-color:#dfb8a8;background:#fff0e8;color:#8e4a26}
+[data-theme='light'] .stale-banner span{color:#775f53}
+[data-theme='light'] .panel{background:#fff;border-color:var(--border);box-shadow:0 8px 24px rgba(27,67,85,.055)}
+[data-theme='light'] .panel-head h2{color:#1b3a47}
+[data-theme='light'] .panel-head-right{color:#527482}
+[data-theme='light'] .mini-badge,[data-theme='light'] .mini-badge.sim{border-color:#a9ccd4;color:#20697b;background:#f0f8fa}
+[data-theme='light'] .map-shell{border-color:#cadde3;background:#e9f0f3}
+[data-theme='light'] .coordinates{border-color:#d3e1e6}
+[data-theme='light'] .coordinates strong,[data-theme='light'] .map-facts strong{color:#1e3e4b}
+[data-theme='light'] .coordinates .icon-button{background:transparent}
+[data-theme='light'] .copied{background:#d9f1ea;color:#16634c}
+[data-theme='light'] .map-facts>div+div{border-color:#d4e1e6}
+[data-theme='light'] .map-facts span,[data-theme='light'] .map-facts small{color:#5c7885}
+[data-theme='light'] .data-strip{background:#fff}
+[data-theme='light'] .metric-label,[data-theme='light'] .quiet-label,[data-theme='light'] .eyebrow,[data-theme='light'] .instrument-label{color:#5b7683}
+[data-theme='light'] .metric-readout strong{color:#1b3d4b}
+[data-theme='light'] .metric-readout span,[data-theme='light'] .metric small{color:#557789}
+[data-theme='light'] .power-number,[data-theme='light'] .battery-visual strong,[data-theme='light'] .panel-foot b{color:#214555}
+[data-theme='light'] .power-number small,[data-theme='light'] .panel-foot,[data-theme='light'] .chart-meta,[data-theme='light'] .chart-empty{color:#5c7986}
+[data-theme='light'] .battery-shell,[data-theme='light'] .battery-shell:after{border-color:#5a929d}
+[data-theme='light'] .battery-shell:after{background:#5a929d}
+[data-theme='light'] .battery-shell>div{background:#39a882}
+[data-theme='light'] .voltage-chart,[data-theme='light'] .surface-list,[data-theme='light'] .surface-list>div{border-color:#d6e3e8}
+[data-theme='light'] .sparkline path{stroke:#08788b!important}
+[data-theme='light'] .trace-grid>div:nth-child(2) .sparkline path{stroke:#9d6a20!important}
+[data-theme='light'] .trace-grid>div:nth-child(3) .sparkline path,[data-theme='light'] .voltage-chart .sparkline path{stroke:#1b8769!important}
+[data-theme='light'] .technical-note{color:#5a7582}
+[data-theme='light'] .health-summary{background:#eaf5f7;border-color:#128394}
+[data-theme='light'] .health-summary strong,[data-theme='light'] .health-bottom strong{color:#1e4855}
+[data-theme='light'] .health-summary .quiet-label:last-child{color:#5c7987}
+[data-theme='light'] .health-row{border-color:#d8e5e9}
+[data-theme='light'] .health-row>span,[data-theme='light'] .health-row strong{color:#355665}
+[data-theme='light'] .health-row strong.good{color:#137353}
+[data-theme='light'] .health-row strong.warn{color:#945a16}
+[data-theme='light'] .health-bottom{color:#52727f}
+[data-theme='light'] .aircraft-outline{fill:#e2eef1;stroke:#558997}
+[data-theme='light'] .aircraft-axis{stroke:#9bbec6}
+[data-theme='light'] .aircraft-figure circle{fill:#298a99}
+[data-theme='light'] .surface-accent{stroke:#18889c}
+[data-theme='light'] .figure-label,[data-theme='light'] .surface-list span,[data-theme='light'] .surface-list small{color:#537482}
+[data-theme='light'] .surface-list strong{color:#1e4352}
+[data-theme='light'] .empty-alert{color:#456f7c;border-color:#b9d4dd}
+[data-theme='light'] .empty-alert strong,[data-theme='light'] .alert-item strong,[data-theme='light'] .timeline-row strong{color:#284856}
+[data-theme='light'] .empty-alert span,[data-theme='light'] .timeline-row span:not(.timeline-marker),[data-theme='light'] .timeline-row time{color:#5b7986}
+[data-theme='light'] .alert-item{background:#f0f6f8}
+[data-theme='light'] .alert-item.warning{background:#fff0e9}
+[data-theme='light'] .alert-item.caution{background:#fff6e7}
+[data-theme='light'] .alert-item span,[data-theme='light'] .alert-item time{color:#647684}
+[data-theme='light'] .timeline{border-color:#b9d3dc}
+[data-theme='light'] .timeline-marker{border-color:#fff}
+[data-theme='light'] .simulation-dock{background:#e4f2f5;border-color:#a8ccd4}
+[data-theme='light'] .simulation-dock strong{color:#1a6576}
+[data-theme='light'] .simulation-dock span:not(.sim-dot){color:#4e7381}
+[data-theme='light'] .simulation-dock button{background:#d1e9ee;border-color:#80b5c2;color:#175b6a}
+[data-theme='light'] .simulation-dock a{background:transparent;border-color:transparent;color:#1b6d7d}
+[data-theme='light'] .simulation-dock button:hover,[data-theme='light'] .simulation-dock a:hover{background:#c0e2e9}
+[data-theme='light'] .simulation-dock.inactive{background:#f5eee1;border-color:#dbc6a0}
+[data-theme='light'] .app-footer{color:#5d7885}
+[data-theme='light'] .detail-list,[data-theme='light'] .instrument-triplet{background:#d1dfe5;border-color:#d1dfe5}
+[data-theme='light'] .detail-list .metric,[data-theme='light'] .instrument-triplet>.metric{background:#f4f9fa}
+[data-theme='light'] .trace-grid>div{background:#f5f9fa;border-color:#d2e2e7}
+[data-theme='light'] .trace-title,[data-theme='light'] .trace-title strong{color:#395c69}
+[data-theme='light'] .source-options button,[data-theme='light'] .scenario-grid button{background:#f4f9fa;border-color:#c9dce3;color:#456370}
+[data-theme='light'] .source-options button:hover,[data-theme='light'] .scenario-grid button:hover{background:#e5f2f5;border-color:#8cb7c3}
+[data-theme='light'] .source-options button.selected,[data-theme='light'] .scenario-grid button.selected{background:#dcf0f4;border-color:#7aafbc;color:#145a6a}
+[data-theme='light'] .source-options strong,[data-theme='light'] .inventory-list strong{color:#294a57}
+[data-theme='light'] .source-options small,[data-theme='light'] .inventory-list small,[data-theme='light'] .scenario-grid button span{color:#5a7784}
+[data-theme='light'] .inventory-list>div{border-color:#d7e5e9}
+[data-theme='light'] .inventory-list svg{color:#447c8b}
+[data-theme='light'] .inventory-list b{color:#187357}
+[data-theme='light'] .sim-panel>p{color:#536f7c}
+[data-theme='light'] .button.primary{background:#126f81;border-color:#126f81;color:#fff}
+[data-theme='light'] .button.primary:hover{background:#0a5c6e}
+[data-theme='light'] .button.ghost{background:#edf6f8;border-color:#a8cbd5;color:#235f6f}
+[data-theme='light'] .button.ghost:hover{background:#dceef2}
+[data-theme='light'] .architecture-flow>div{background:#edf6f8;border-color:#c8dce3}
+[data-theme='light'] .architecture-flow strong{color:#315362}
+[data-theme='light'] .architecture-flow span{color:#607e8a}
+[data-theme='light'] .architecture-flow>i{background:#7ca8b4}
+/* Instrument contrast remains calibrated independently of the workspace palette. */
+[data-theme='light'] .pfd .instrument-label{color:#90a8b2}
+[data-theme='light'] .pfd .pfd-tape strong{color:#e6f5f7}
+[data-theme='light'] .pfd .metric-label{color:#91aab7}
+[data-theme='light'] .pfd .horizon-bottom span{color:#e9f4ef}
+[data-theme='light'] .pfd .pfd-no-data strong{color:#c5d2d4}
+[data-theme='light'] .pfd .pfd-heading .instrument-label{color:#90a8b2}
+[data-theme='light'] .pfd .pfd-footer{color:#8ca7b0}
+[data-theme='light'] .pfd .pfd-footer b{color:#dcebea}
+[data-theme='light'] .pfd .pfd-tape span,[data-theme='light'] .pfd .vsi-block span{color:#91afbb}
+[data-theme='light'] .pfd .vsi-block strong{color:#dbeaec}
+@media(max-width:520px){.breadcrumb{display:none}.topbar-left{flex:0 0 auto}.mobile-menu{margin-right:0}}

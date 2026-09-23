@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#09121d" />
+    <script>
+      try {
+        const savedTheme = localStorage.getItem('flight-command-center-theme');
+        const initialTheme = savedTheme === 'light' || savedTheme === 'dark'
+          ? savedTheme
+          : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.dataset.theme = initialTheme;
+        document.querySelector('meta[name="theme-color"]').content = initialTheme === 'light' ? '#f4f7f8' : '#09121d';
+      } catch { document.documentElement.dataset.theme = 'dark'; }
+    </script>
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
     <meta name="description" content="Flight Command Center — fixed-wing telemetry, navigation and aircraft health." />
     <title>Flight Command Center · FD-X</title>

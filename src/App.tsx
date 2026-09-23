@@ -5,7 +5,23 @@ import type { AircraftTelemetry, FlightAlert, SimulationScenario, TelemetrySourc
 import './styles.css'
 
 type View = 'command' | 'navigation' | 'instruments' | 'telemetry' | 'sensors' | 'alerts' | 'engineering'
-type IconName = 'grid' | 'map' | 'horizon' | 'wave' | 'chip' | 'alert' | 'tool' | 'expand' | 'chevron' | 'play' | 'pause' | 'reset' | 'copy' | 'arrow' | 'radio' | 'clock' | 'download' | 'menu' | 'close' | 'plane' | 'pin' | 'bolt'
+type Theme = 'dark' | 'light'
+type IconName = 'grid' | 'map' | 'horizon' | 'wave' | 'chip' | 'alert' | 'tool' | 'expand' | 'chevron' | 'play' | 'pause' | 'reset' | 'copy' | 'arrow' | 'radio' | 'clock' | 'download' | 'menu' | 'close' | 'plane' | 'pin' | 'bolt' | 'sun' | 'moon'
+
+const THEME_STORAGE_KEY = 'flight-command-center-theme'
+
+function savedTheme(): Theme | null {
+  try {
+    const value = window.localStorage.getItem(THEME_STORAGE_KEY)
+    return value === 'light' || value === 'dark' ? value : null
+  } catch {
+    return null
+  }
+}
+
+function systemTheme(): Theme {
+  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+}
 
 const NAV: { key: View; label: string; icon: IconName; section: string }[] = [
   { key: 'command', label: 'Command center', icon: 'grid', section: 'OPERATIONS' },
@@ -49,6 +65,8 @@ function Icon({ name, size = 18, className = '' }: { name: IconName; size?: numb
     plane: <><path d="m12 2 2 8 7 4v2l-8-2-1 7-2-3-2 3-1-7-8 2v-2l7-4z" /></>,
     pin: <><path d="M12 21s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12z" /><circle cx="12" cy="9" r="2" /></>,
     bolt: <path d="m13 2-9 12h7l-1 8 10-12h-7z" />,
+    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></>,
+    moon: <path d="M20.3 15.5A8.5 8.5 0 0 1 8.5 3.7 8.5 8.5 0 1 0 20.3 15.5Z" />,
   }
   return <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{lines[name]}</svg>
 }
@@ -203,23 +221,32 @@ function DataStrip({ snapshot, status }: { snapshot: AircraftTelemetry | null; s
   </div>
 }
 
-function Coordinates({ snapshot, status }: { snapshot: AircraftTelemetry | null; status: string }) {
+function Coordinates({ snapshot, history, status }: { snapshot: AircraftTelemetry | null; history: AircraftTelemetry[]; status: string }) {
   const [copied, setCopied] = useState(false)
-  const lat = snapshot?.navigation.latitude, lon = snapshot?.navigation.longitude
   const fresh = status === 'LIVE' || status === 'SIMULATION'
-  const valid = snapshot?.navigation.gpsFix && lat != null && lon != null
+  const sample = [snapshot, ...history.slice().reverse()].find(item => {
+    const lat = item?.navigation.latitude, lon = item?.navigation.longitude
+    return item != null && snapshot != null && item.aircraftId === snapshot.aircraftId && item.navigation.gpsFix &&
+      lat != null && Number.isFinite(lat) && Math.abs(lat) <= 90 &&
+      lon != null && Number.isFinite(lon) && Math.abs(lon) <= 180
+  })
+  const lat = sample?.navigation.latitude, lon = sample?.navigation.longitude
+  const valid = lat != null && lon != null
+  const current = valid && snapshot !== null && sample === snapshot && fresh &&
+    Date.now() - snapshot.timestamp < 1_500 &&
+    snapshot.navigation.gpsUpdatedAt != null && Date.now() - snapshot.navigation.gpsUpdatedAt < 1_500
   function copy() {
-    if (!valid) return
+    if (lat == null || lon == null) return
     void navigator.clipboard.writeText(`${lat.toFixed(6)}, ${lon.toFixed(6)}`).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1600) }).catch(() => setCopied(false))
   }
-  return <div className="coordinates"><div><span className="quiet-label">{!snapshot ? 'POSITION' : !fresh && valid ? 'LAST KNOWN POSITION' : 'CURRENT POSITION'}</span><strong>{valid ? `${lat.toFixed(6)}°, ${lon.toFixed(6)}°` : 'POSITION UNAVAILABLE'}</strong></div><button className="icon-button" aria-label="Copy displayed coordinates" title="Copy displayed coordinates" disabled={!valid} onClick={copy}><Icon name="copy" size={16}/></button>{copied && <span className="copied">COPIED</span>}</div>
+  return <div className="coordinates"><div><span className="quiet-label">{!valid ? 'POSITION' : current ? 'CURRENT POSITION' : 'LAST KNOWN POSITION'}</span><strong>{valid ? `${lat.toFixed(6)}°, ${lon.toFixed(6)}°` : 'POSITION UNAVAILABLE'}</strong></div><button className="icon-button" aria-label="Copy displayed coordinates" title="Copy displayed coordinates" disabled={!valid} onClick={copy}><Icon name="copy" size={16}/></button>{copied && <span className="copied">COPIED</span>}</div>
 }
 
-function MapPanel({ snapshot, history, source, status, large = false }: { snapshot: AircraftTelemetry | null; history: AircraftTelemetry[]; source: TelemetrySource; status: string; large?: boolean }) {
+function MapPanel({ snapshot, history, source, status, theme, large = false }: { snapshot: AircraftTelemetry | null; history: AircraftTelemetry[]; source: TelemetrySource; status: string; theme: Theme; large?: boolean }) {
   const fresh = status === 'LIVE' || status === 'SIMULATION'
   return <Panel eyebrow="NAVIGATION / NEO-7 GPS" title="Position & ground track" right={<span className="mini-badge">{!fresh && snapshot ? 'LAST KNOWN' : !snapshot ? 'GPS UNKNOWN' : snapshot.navigation.gpsFix ? `${snapshot.navigation.satellites} SAT / FIX` : 'NO GPS FIX'}</span>} className={`map-panel ${large ? 'large' : ''}`}>
-    <div className="map-shell"><NavigationMap key={source} snapshot={snapshot} history={history}/></div>
-    <Coordinates snapshot={snapshot} status={status}/>
+    <div className="map-shell"><NavigationMap key={source} snapshot={snapshot} history={history} theme={theme} source={source}/></div>
+    <Coordinates snapshot={snapshot} history={history} status={status}/>
     <div className="map-facts"><div><span>HOME DISTANCE</span><strong>{num(snapshot?.navigation.distanceHome, 1)} <small>m</small></strong></div><div><span>BEARING HOME</span><strong>{bearing(snapshot?.navigation.bearingHome)}</strong></div><div><span>COURSE OVER GROUND</span><strong>{bearing(snapshot?.navigation.course)}</strong></div></div>
   </Panel>
 }
@@ -256,6 +283,7 @@ export default function App() {
   const [view, setView] = useState<View>(getView)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [utc, setUtc] = useState(new Date())
+  const [theme, setTheme] = useState<Theme>(() => savedTheme() ?? systemTheme())
   const stateLabel = normalizedStatus(String(status), source, snapshot)
   const selectedView = NAV.find(item => item.key === view) ?? NAV[0]
   const sourceLabel = source === 'simulation' ? 'SIMULATION' : source === 'cloud' ? 'CLOUD' : source === 'direct' ? 'DIRECT' : 'OFFLINE'
@@ -264,10 +292,13 @@ export default function App() {
 
   useEffect(() => { const onHash = () => { setView(getView()); setSidebarOpen(false) }; window.addEventListener('hashchange', onHash); return () => window.removeEventListener('hashchange', onHash) }, [])
   useEffect(() => { const timer = window.setInterval(() => setUtc(new Date()), 1000); return () => window.clearInterval(timer) }, [])
+  useEffect(() => { document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f4f7f8' : '#09121d') }, [theme])
+  useEffect(() => { const preference = window.matchMedia?.('(prefers-color-scheme: light)'); if (!preference) return; const syncTheme = () => { if (!savedTheme()) setTheme(preference.matches ? 'light' : 'dark') }; preference.addEventListener('change', syncTheme); return () => preference.removeEventListener('change', syncTheme) }, [])
   useEffect(() => { const onKey = (event: KeyboardEvent) => { if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.metaKey || event.ctrlKey || event.altKey) return; if (event.key.toLowerCase() === 'f') void toggleFullscreen(); if (event.key.toLowerCase() === 'm') window.location.hash = '/navigation'; if (event.key.toLowerCase() === 'a') window.location.hash = '/alerts'; if (event.key.toLowerCase() === 'l') window.location.hash = '/telemetry' }; window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey) }, [])
   const liveValues = useMemo(() => history.slice(-120), [history])
 
   async function toggleFullscreen() { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen() } catch { /* unsupported browser */ } }
+  function toggleTheme() { const next = theme === 'dark' ? 'light' : 'dark'; setTheme(next); try { window.localStorage.setItem(THEME_STORAGE_KEY, next) } catch { /* Theme remains available for this session. */ } }
   function exportBuffer() { const blob = new Blob([JSON.stringify({ source, exportedAt: new Date().toISOString(), limitation: 'Current in-memory telemetry buffer only; not a flight recording.', samples: history }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'fd-x1-telemetry-buffer.json'; link.click(); URL.revokeObjectURL(url) }
 
   return <div className="app-shell">
@@ -275,11 +306,11 @@ export default function App() {
       <div className="brand"><div className="brand-mark"><Icon name="plane" size={26}/></div><div><strong>FLIGHT<span>COMMAND</span></strong><small>CENTER / FD-X</small></div><button className="sidebar-close icon-button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}><Icon name="close"/></button></div>
       <div className="sidebar-context"><div className="side-rule"/><span className="eyebrow">AIRCRAFT SELECTED</span><div className="aircraft-name"><span className="aircraft-monogram">01</span><div><strong>FD-X1</strong><small>{snapshot?.aircraftId ?? 'Fixed-wing platform'}</small></div><Icon name="chevron" size={14}/></div></div>
       <nav aria-label="Primary navigation">{NAV.map((item, i) => <div key={item.key}>{(i === 0 || NAV[i - 1].section !== item.section) && <div className="nav-section">{item.section}</div>}<a href={`#/${item.key}`} className={`nav-link ${view === item.key ? 'active' : ''}`} aria-current={view === item.key ? 'page' : undefined}><Icon name={item.icon} size={18}/><span>{item.label}</span>{item.key === 'alerts' && latestAlerts > 0 && <b>{latestAlerts}</b>}</a></div>)}</nav>
-      <div className="sidebar-bottom"><div className="source-readout"><span className="eyebrow">TELEMETRY SOURCE</span><div><i className={`status-lamp ${stateLabel === 'SIMULATION' || stateLabel === 'LIVE' ? 'good' : stateLabel === 'STALE' || stateLabel === 'LOST' ? 'warn' : 'unknown'}`}/><strong>{sourceLabel}</strong><span>{stateLabel}</span></div></div><div className="sidebar-version"><span>FD-X COMMAND SYSTEM</span><b>v0.1.0 / PROTOTYPE</b></div></div>
+      <div className="sidebar-bottom"><div className="source-readout"><span className="eyebrow">TELEMETRY SOURCE</span><div><i className={`status-lamp ${stateLabel === 'SIMULATION' || stateLabel === 'LIVE' ? 'good' : stateLabel === 'STALE' || stateLabel === 'LOST' ? 'warn' : 'unknown'}`}/><strong>{sourceLabel}</strong><span>{stateLabel}</span></div></div><div className="sidebar-version"><span>FD-X COMMAND SYSTEM</span><b>v0.2.0 / PROTOTYPE</b></div></div>
     </aside>
     {sidebarOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={() => setSidebarOpen(false)}/>}
 
-    <div className="main-shell"><header className="topbar"><div className="topbar-left"><button className="mobile-menu icon-button" aria-label="Open navigation" onClick={() => setSidebarOpen(true)}><Icon name="menu"/></button><div className="breadcrumb">OPERATIONS <span>/</span> <strong>{selectedView.label.toUpperCase()}</strong></div></div><div className="topbar-status"><div className={`global-state ${stateLabel.toLowerCase()}`}><i className="dot"/>{stateLabel === 'LOST' ? 'TELEMETRY LOST' : stateLabel}</div><div className="top-data"><span>MODE</span><b>{mode}</b></div><div className="top-data"><span>GPS</span><b>{snapshot ? stateLabel === 'STALE' || stateLabel === 'LOST' ? 'LAST KNOWN' : snapshot.navigation.gpsFix ? `${snapshot.navigation.satellites} SAT` : 'NO FIX' : '—'}</b></div><div className="top-data"><span>BATTERY</span><b>{num(snapshot?.power.batteryVoltage, 2)} V</b></div></div><div className="topbar-right"><div className="utc-clock"><span>UTC</span><strong>{utc.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour12: false })}</strong></div><button className="icon-button fullscreen-button" aria-label="Toggle fullscreen" title="Fullscreen (F)" onClick={() => void toggleFullscreen()}><Icon name="expand" size={17}/></button><div className="operator" title="Local operator view">ET</div></div></header>
+    <div className="main-shell"><header className="topbar"><div className="topbar-left"><button className="mobile-menu icon-button" aria-label="Open navigation" onClick={() => setSidebarOpen(true)}><Icon name="menu"/></button><div className="breadcrumb">OPERATIONS <span>/</span> <strong>{selectedView.label.toUpperCase()}</strong></div></div><div className="topbar-status"><div className={`global-state ${stateLabel.toLowerCase()}`}><i className="dot"/>{stateLabel === 'LOST' ? 'TELEMETRY LOST' : stateLabel}</div><div className="top-data"><span>MODE</span><b>{mode}</b></div><div className="top-data"><span>GPS</span><b>{snapshot ? stateLabel === 'STALE' || stateLabel === 'LOST' ? 'LAST KNOWN' : snapshot.navigation.gpsFix ? `${snapshot.navigation.satellites} SAT` : 'NO FIX' : '—'}</b></div><div className="top-data"><span>BATTERY</span><b>{num(snapshot?.power.batteryVoltage, 2)} V</b></div></div><div className="topbar-right"><div className="utc-clock"><span>UTC</span><strong>{utc.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour12: false })}</strong></div><button className="icon-button theme-button" type="button" aria-label="Light theme" aria-pressed={theme === 'light'} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17}/></button><button className="icon-button fullscreen-button" aria-label="Toggle fullscreen" title="Fullscreen (F)" onClick={() => void toggleFullscreen()}><Icon name="expand" size={17}/></button><div className="operator" title="Local operator view">ET</div></div></header>
 
       <div className="content"><div className="page-title-row"><div><div className="overline"><span className="overline-line"/> FLIGHT NAVIGATION & MISSION INTELLIGENCE</div><h1>{view === 'command' ? 'Command Center' : selectedView.label}</h1><p>{view === 'command' ? 'A single view of aircraft attitude, navigation and systems.' : view === 'navigation' ? 'Position, ground track and GPS quality.' : view === 'instruments' ? 'Flight attitude and independent measurement sources.' : view === 'telemetry' ? 'Inspect packet freshness and recent local telemetry.' : view === 'sensors' ? 'Assess sensor availability and data integrity.' : view === 'alerts' ? 'Review active conditions and recent events.' : 'Inspect controller state and simulation behavior.'}</p></div><div className="session-clock"><span>SESSION ELAPSED</span><strong>{duration(durationSec)}</strong><small>{sourceLabel} / LOCAL SESSION</small></div></div>
 
@@ -287,9 +318,9 @@ export default function App() {
 
       {(stateLabel === 'STALE' || stateLabel === 'LOST') && snapshot && <div className="stale-banner"><Icon name="alert" size={17}/><strong>{stateLabel === 'STALE' ? 'TELEMETRY STALE' : 'TELEMETRY LOST'}</strong><span>Holding last received values · Last packet {ageText(ageMs)}. Measurements may no longer describe the aircraft.</span></div>}
 
-      {view === 'command' && <><div className="hero-grid"><PrimaryFlightDisplay snapshot={snapshot} status={stateLabel}/><MapPanel snapshot={snapshot} history={liveValues} source={source} status={stateLabel}/></div><DataStrip snapshot={snapshot} status={stateLabel}/><div className="lower-grid"><PowerPanel snapshot={snapshot} history={liveValues}/><HealthPanel snapshot={snapshot} status={stateLabel} ageMs={ageMs}/><ControlPanel snapshot={snapshot}/></div><div className="bottom-grid"><Panel eyebrow="04 / ACTIVE CONDITIONS" title="Alerts" right={<a href="#/alerts" className="text-link">VIEW ALL <Icon name="arrow" size={13}/></a>}><AlertList alerts={alerts} status={stateLabel} compact/></Panel><EventPanel alerts={alerts} snapshot={snapshot} durationSec={durationSec}/></div></>}
+      {view === 'command' && <><div className="hero-grid"><PrimaryFlightDisplay snapshot={snapshot} status={stateLabel}/><MapPanel snapshot={snapshot} history={liveValues} source={source} status={stateLabel} theme={theme}/></div><DataStrip snapshot={snapshot} status={stateLabel}/><div className="lower-grid"><PowerPanel snapshot={snapshot} history={liveValues}/><HealthPanel snapshot={snapshot} status={stateLabel} ageMs={ageMs}/><ControlPanel snapshot={snapshot}/></div><div className="bottom-grid"><Panel eyebrow="04 / ACTIVE CONDITIONS" title="Alerts" right={<a href="#/alerts" className="text-link">VIEW ALL <Icon name="arrow" size={13}/></a>}><AlertList alerts={alerts} status={stateLabel} compact/></Panel><EventPanel alerts={alerts} snapshot={snapshot} durationSec={durationSec}/></div></>}
 
-      {view === 'navigation' && <><div className="navigation-grid"><MapPanel snapshot={snapshot} history={liveValues} source={source} status={stateLabel} large/><Panel eyebrow="GPS / POSITION SOLUTION" title="Navigation detail"><div className="detail-list"><Metric label="LATITUDE" value={snapshot?.navigation.gpsFix ? num(snapshot.navigation.latitude, 6) : '—'} unit="°"/><Metric label="LONGITUDE" value={snapshot?.navigation.gpsFix ? num(snapshot.navigation.longitude, 6) : '—'} unit="°"/><Metric label="GPS ALTITUDE" value={num(snapshot?.navigation.gpsAltitude)} unit="m"/><Metric label="GROUND SPEED" value={num(snapshot?.navigation.groundSpeed)} unit="km/h"/><Metric label="HDOP" value={num(snapshot?.navigation.hdop)} hint="Reported when available"/><Metric label="SATELLITES" value={snapshot ? String(snapshot.navigation.satellites) : '—'}/></div><p className="technical-note">Home distance and bearing are shown only when a valid home position is available in telemetry. No waypoint control is exposed.</p></Panel></div><TracePanel history={liveValues}/></>}
+      {view === 'navigation' && <><div className="navigation-grid"><MapPanel snapshot={snapshot} history={liveValues} source={source} status={stateLabel} theme={theme} large/><Panel eyebrow="GPS / POSITION SOLUTION" title="Navigation detail"><div className="detail-list"><Metric label="LATITUDE" value={snapshot?.navigation.gpsFix ? num(snapshot.navigation.latitude, 6) : '—'} unit="°"/><Metric label="LONGITUDE" value={snapshot?.navigation.gpsFix ? num(snapshot.navigation.longitude, 6) : '—'} unit="°"/><Metric label="GPS ALTITUDE" value={num(snapshot?.navigation.gpsAltitude)} unit="m"/><Metric label="GROUND SPEED" value={num(snapshot?.navigation.groundSpeed)} unit="km/h"/><Metric label="HDOP" value={num(snapshot?.navigation.hdop)} hint="Reported when available"/><Metric label="SATELLITES" value={snapshot ? String(snapshot.navigation.satellites) : '—'}/></div><p className="technical-note">Home distance and bearing are shown only when a valid home position is available in telemetry. No waypoint control is exposed.</p></Panel></div><TracePanel history={liveValues}/></>}
 
       {view === 'instruments' && <><div className="instruments-grid"><PrimaryFlightDisplay snapshot={snapshot} status={stateLabel}/><div className="instrument-stack"><Panel eyebrow="ATTITUDE / MPU9250" title="Orientation"><div className="instrument-triplet"><Metric label="ROLL" value={signed(snapshot?.attitude.roll)} unit="°"/><Metric label="PITCH" value={signed(snapshot?.attitude.pitch)} unit="°"/><Metric label="HEADING" value={bearing(snapshot?.attitude.heading)}/></div></Panel><Panel eyebrow="ALTIMETRY / INDEPENDENT SOURCES" title="Altitude & vertical motion"><div className="instrument-triplet"><Metric label="BARO ALT / BMP180" value={num(snapshot?.navigation.barometricAltitude)} unit="m"/><Metric label="GPS ALT / NEO-7" value={num(snapshot?.navigation.gpsAltitude)} unit="m"/><Metric label="VERTICAL SPEED" value={signed(snapshot?.environment.verticalSpeed)} unit="m/s"/></div></Panel><PowerPanel snapshot={snapshot} history={liveValues}/></div></div></>}
 
