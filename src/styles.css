@@ -209,3 +209,5 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(
 [data-theme='light'] .pfd .pfd-tape span,[data-theme='light'] .pfd .vsi-block span{color:#91afbb}
 [data-theme='light'] .pfd .vsi-block strong{color:#dbeaec}
 @media(max-width:520px){.breadcrumb{display:none}.topbar-left{flex:0 0 auto}.mobile-menu{margin-right:0}}
+
+@media(min-width:761px){.instruments-grid .pfd{height:735px}.instrument-stack>.panel{flex:0 0 auto}.instrument-stack>.power-panel{flex:1}}

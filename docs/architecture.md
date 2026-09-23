@@ -20,7 +20,8 @@ The browser model should carry an explicit source (`simulation`, `cloud`, `direc
 
 | Field | Producer | Units / interpretation | Invalid state |
 | --- | --- | --- | --- |
-| Roll, pitch, heading | Calibrated MPU9250 fusion on ESP32 | Degrees; heading normalized to [0, 360) | `null` with stale/error health |
+| Roll and pitch | Calibrated MPU9250 gyro + accelerometer fusion on ESP32 | Degrees; aircraft attitude, with mounting alignment and filter validation | `null` with stale/error health |
+| Yaw / magnetic heading | Calibrated MPU9250 gyro + tilt-compensated magnetometer fusion on ESP32 | Degrees; heading normalized to [0, 360), referenced to magnetic north unless declination correction is applied | `null` with stale/error health |
 | GPS latitude, longitude, fix, satellites, HDOP | NEO-7 | WGS84 degrees; boolean fix; count; dimensionless HDOP | Coordinates `null` when no valid fix |
 | GPS ground speed and course | NEO-7 | km/h and degrees in the browser model; convert raw GPS or stored m/s at the adapter boundary; **not airspeed** | `null` without valid position/velocity |
 | Pressure, temperature, barometric altitude | BMP180 | hPa, °C, metres; altitude relative to configured reference | `null` if unavailable |
@@ -28,6 +29,8 @@ The browser model should carry an explicit source (`simulation`, `cloud`, `direc
 | Throttle, control axes, mode, RC and failsafe state | Nano UART v1 | Normalized demand and actual reported mode | Stale when UART stops; never infer servo feedback |
 
 The data model should distinguish raw measurements, derived navigation outputs, and source/quality metadata. A stale reading can remain visible as last known, but must show its age and stale state. A missing value is not zero. Sensor-specific failure does not imply all other sensors failed.
+
+The aircraft attitude view should consume roll and pitch from the fused IMU solution and a separately labeled magnetic heading. Hard-iron and soft-iron magnetometer calibration, tilt compensation, sensor mounting alignment, and magnetic interference checks are required before heading can be trusted. The gyroscope's integrated yaw drifts without an external reference; a magnetometer can constrain it only when its quality is acceptable. Keep GPS course over ground separate from heading: course describes movement and may be unavailable or noisy when nearly stationary. Attach a source timestamp and per-output validity/quality so the view can hold a last-known pose with an explicit age and stale indication. The current browser renders simulated values; live ESP32 fusion and transport remain future integration work.
 
 ## Frequency, freshness and storage
 

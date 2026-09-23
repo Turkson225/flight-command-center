@@ -13,7 +13,7 @@ Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whos
 
 | Capability | This milestone | Integration still required |
 | --- | --- | --- |
-| Cockpit | Responsive primary flight display, status, navigation/trail, battery, alerts and sensor-health presentation | Calibration and independent validation against actual flight instruments |
+| Cockpit | Responsive primary flight display and aircraft attitude view (roll, pitch and heading), status, navigation/trail, battery, alerts and sensor-health presentation | Calibration and independent validation against actual flight instruments |
 | Navigation map | Interactive OpenStreetMap basemap with aircraft, reported HOME, trail and local grid fallback | Verified live GPS transport and a production tile service for higher traffic |
 | Theme | Light and dark themes with a persistent operator preference | — |
 | Telemetry | Central typed state and a roughly 5 Hz deterministic simulation with selectable fault scenarios | ESP32 sensor drivers, UART decoding, secure ingestion and live telemetry adapter |
@@ -23,6 +23,8 @@ Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whos
 | Hosting | Live GitHub Pages deployment from `main`, with Vite configured for `/flight-command-center/` | — |
 
 The simulator includes normal flight, GPS failure, low battery, telemetry loss, and failsafe exercises. Values in a fault state must remain labeled as **simulated**; missing or stale values are not evidence of a safe aircraft state.
+
+The attitude view currently follows **simulated** roll, pitch and heading. For live telemetry, the ESP32 must fuse calibrated MPU9250 gyroscope and accelerometer readings for roll/pitch and use the tilt-compensated, hard/soft-iron-calibrated magnetometer to bound yaw drift and derive magnetic heading. Magnetic heading differs from GPS course over ground, especially at low speed, in wind or during a turn. Source timestamps and sensor quality must accompany the live values; an invalid or stale attitude must be clearly marked rather than presented as current.
 
 The geographic basemap loads standard OpenStreetMap tiles only for the area on screen. Its attribution stays visible. When tiles cannot load, the local coordinate grid remains available; this is not an offline map or terrain source. Tile service availability is best-effort. See the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/). If real aircraft positions are added later, review the privacy implications of third-party map requests.
 

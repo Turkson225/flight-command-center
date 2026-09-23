@@ -1,0 +1,54 @@
+.aircraft-attitude{min-width:0;color:#dce9eb;font-family:var(--mono,Consolas,monospace)}
+.aircraft-attitude__visuals{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px;min-width:0}
+.aircraft-attitude__horizon{height:154px;min-width:0;position:relative;overflow:hidden;background:#182f3d;border:1px solid #3d5865;isolation:isolate}
+.aircraft-attitude__landscape{position:absolute;inset:-105% -110%;transform-origin:center;transition:transform .18s linear}
+.aircraft-attitude__sky,.aircraft-attitude__earth{height:50%}
+.aircraft-attitude__sky{background:linear-gradient(180deg,#173b50,#2e7080)}
+.aircraft-attitude__earth{background:linear-gradient(180deg,#766f59,#414640)}
+.aircraft-attitude__horizon-line{position:absolute;top:50%;left:0;right:0;height:2px;background:#f4e8c9;box-shadow:0 0 8px #e3eff1a0}
+.aircraft-attitude__pitch-mark{position:absolute;left:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;color:#f6f7ef;font-size:8px;text-shadow:0 1px 3px #142430;white-space:nowrap}
+.aircraft-attitude__pitch-mark i{height:1px;width:45px;background:currentColor;box-shadow:0 1px 3px #142430}
+.aircraft-attitude__bank-arc{position:absolute;width:136px;height:136px;left:50%;top:8px;transform:translateX(-50%);border:1px solid #d6e9e5b0;border-radius:50%;clip-path:inset(0 0 73% 0)}
+.aircraft-attitude__bank-arc i{position:absolute;left:calc(50% - .5px);top:0;height:7px;width:1px;background:#f6f5db;transform-origin:.5px 68px}
+.aircraft-attitude__bank-arc i.major{height:10px;width:2px}
+.aircraft-attitude__bank-pointer{position:absolute;left:50%;top:2px;width:136px;height:136px;transform-origin:center 74px;transition:transform .18s linear}
+.aircraft-attitude__bank-pointer:before{content:'';position:absolute;left:calc(50% - 5px);top:14px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #f7d993}
+.aircraft-attitude__fixed-wing{position:absolute;left:50%;top:50%;width:min(140px,75%);height:40px;transform:translate(-50%,-50%);color:#f8de9b;filter:drop-shadow(0 1px 2px #16232b)}
+.aircraft-attitude__axis{position:absolute;bottom:7px;font-size:8px;letter-spacing:.08em;color:#e9f1f0;background:#132b38bb;padding:2px 4px}
+.aircraft-attitude__axis--left{left:7px}.aircraft-attitude__axis--right{right:7px}
+.aircraft-attitude__horizon--missing{background:repeating-linear-gradient(0deg,#162d39,#162d39 28px,#21404b 29px)}
+.aircraft-attitude__empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;text-align:center;padding:10px;background:#11242aaa}
+.aircraft-attitude__empty strong{color:#c9dadd;font-size:10px;letter-spacing:.06em}
+.aircraft-attitude__empty span{color:#8faab3;font:10px 'DM Sans',sans-serif}
+.aircraft-attitude__stale-tag{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:9px;letter-spacing:.08em;background:#352b25ed;border:1px solid #b78d60;color:#f0c391;padding:6px 8px;white-space:nowrap}
+.aircraft-attitude__compass{height:154px;display:grid;place-items:center;position:relative;overflow:hidden;border:1px solid #3d5865;background:radial-gradient(circle at center,#203a47,#122a36 70%)}
+.aircraft-attitude__compass-face{width:150px;height:150px;display:block}
+.aircraft-attitude__compass-outer{fill:none;stroke:#607d88;stroke-width:1}
+.aircraft-attitude__compass-inner{fill:none;stroke:#385460;stroke-width:1}
+.aircraft-attitude__compass-rose{transition:transform .2s linear}
+.aircraft-attitude__compass-rose line{stroke:#7596a1;stroke-width:1}
+.aircraft-attitude__compass-rose line.cardinal-tick{stroke:#d6e6e6;stroke-width:2}
+.aircraft-attitude__compass-rose text{fill:#b8ced1;font-size:12px;font-family:var(--mono,monospace);font-weight:600}
+.aircraft-attitude__compass-rose text.north{fill:#e5ad83}
+.aircraft-attitude__lubber{fill:#f0cc91}
+.aircraft-attitude__heading-value{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#112733e8;min-width:74px;padding:7px 5px;text-align:center;box-shadow:0 0 0 1px #375661}
+.aircraft-attitude__heading-value strong{display:block;font-size:17px;line-height:1.1;color:#e4f2ef;font-weight:500}
+.aircraft-attitude__heading-value span{display:block;margin-top:5px;font-size:7px;letter-spacing:.07em;white-space:nowrap;color:#99bcc4}
+.aircraft-attitude__compass--missing .aircraft-attitude__heading-value strong{color:#819ba5}
+.aircraft-attitude__readouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #324d5a;border-top:0;background:#172b36}
+.aircraft-attitude__readouts>div{min-width:0;padding:9px 8px}
+.aircraft-attitude__readouts>div+div{border-left:1px solid #324d5a}
+.aircraft-attitude__readouts span{display:block;font-size:8px;letter-spacing:.08em;color:#94b1ba;white-space:nowrap}
+.aircraft-attitude__readouts strong{display:block;margin-top:5px;color:#e9f2ee;font-size:14px;white-space:nowrap;font-weight:500}
+.aircraft-attitude__meta{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:8px;letter-spacing:.05em;color:#7997a1}
+.aircraft-attitude__meta>span:first-child{display:flex;align-items:center;gap:5px}
+.aircraft-attitude__meta i{display:block;width:5px;height:5px;border-radius:50%;background:currentColor}
+.aircraft-attitude__mag-ok{color:#a7d7b8}
+.aircraft-attitude__mag-warn{color:#e3ba80}
+.aircraft-attitude--stale .aircraft-attitude__landscape,.aircraft-attitude--stale .aircraft-attitude__compass-rose{filter:grayscale(.7) brightness(.7)}
+.aircraft-attitude--stale .aircraft-attitude__readouts strong{color:#e3bb83}
+[data-theme='light'] .aircraft-attitude__meta{color:#557581}
+[data-theme='light'] .aircraft-attitude__mag-ok{color:#147453}
+[data-theme='light'] .aircraft-attitude__mag-warn{color:#96601e}
+@media(max-width:430px){.aircraft-attitude__visuals{grid-template-columns:minmax(0,1fr) 116px;gap:5px}.aircraft-attitude__horizon,.aircraft-attitude__compass{height:136px}.aircraft-attitude__compass-face{width:116px;height:116px}.aircraft-attitude__bank-arc,.aircraft-attitude__bank-pointer{width:112px;height:112px}.aircraft-attitude__bank-pointer{transform-origin:center 63px}.aircraft-attitude__heading-value{min-width:65px}.aircraft-attitude__heading-value strong{font-size:15px}.aircraft-attitude__heading-value span{font-size:6px}.aircraft-attitude__readouts>div{padding:8px 5px}.aircraft-attitude__readouts span{font-size:7px}.aircraft-attitude__readouts strong{font-size:12px}.aircraft-attitude__meta{font-size:7px}}
+@media(prefers-reduced-motion:reduce){.aircraft-attitude__landscape,.aircraft-attitude__bank-pointer,.aircraft-attitude__compass-rose{transition:none}}
