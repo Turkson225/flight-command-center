@@ -106,11 +106,17 @@ export function NavigationMap({
   history,
   theme = 'dark',
   source,
+  status,
+  ageMs,
+  freshnessNow,
 }: {
   snapshot: AircraftTelemetry | null;
   history: AircraftTelemetry[];
   theme?: 'dark' | 'light';
   source?: TelemetrySource;
+  status: string;
+  ageMs: number | null;
+  freshnessNow: number;
 }) {
   const mapRef = useRef<HTMLElement>(null);
   const leafletContainerRef = useRef<HTMLDivElement>(null);
@@ -128,12 +134,11 @@ export function NavigationMap({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [tileState, setTileState] = useState<'waiting' | 'ready' | 'unavailable'>('waiting');
   const [manualCenter, setManualCenter] = useState<Coordinate | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-
-  const sampleAgeMs = snapshot ? Math.max(0, now - snapshot.timestamp) : Infinity;
+  const sampleAgeMs = ageMs ?? Infinity;
   const samplePosition = isValidPosition(snapshot) ? coordinateOf(snapshot) : null;
-  const gpsAgeMs = snapshot?.navigation.gpsUpdatedAt == null ? Infinity : Math.max(0, now - snapshot.navigation.gpsUpdatedAt);
-  const hasFix = Boolean(samplePosition && sampleAgeMs < 1_500 && gpsAgeMs < 1_500);
+  const gpsAgeMs = snapshot?.navigation.gpsUpdatedAt == null ? Infinity : Math.max(0, freshnessNow - snapshot.navigation.gpsUpdatedAt);
+  const sourceFresh = status === 'LIVE' || status === 'SIMULATION';
+  const hasFix = Boolean(samplePosition && sourceFresh && sampleAgeMs < 1_500 && gpsAgeMs < 1_500);
   const livePosition = hasFix ? samplePosition : null;
   const deviceHome = snapshot &&
     typeof snapshot.navigation.homeLatitude === 'number' &&
@@ -146,9 +151,9 @@ export function NavigationMap({
     : null;
   const gpsLabel = !snapshot
     ? 'NO TELEMETRY'
-    : sampleAgeMs >= 5_000
+    : status === 'LOST' || sampleAgeMs >= 5_000
       ? 'TELEMETRY LOST'
-      : sampleAgeMs >= 1_500
+      : !sourceFresh || sampleAgeMs >= 1_500
         ? 'TELEMETRY STALE'
         : hasFix
           ? 'GPS FIX'
@@ -171,11 +176,6 @@ export function NavigationMap({
       previousAircraftId.current = null;
     }
   }, [hasSourceData]);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(Date.now()), 1_000);
-    return () => window.clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (snapshot?.aircraftId && previousAircraftId.current !== snapshot.aircraftId) {
