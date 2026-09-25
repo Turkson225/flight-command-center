@@ -5,7 +5,7 @@
 
 [Repository](https://github.com/Turkson225/flight-command-center) · [Live dashboard](https://turkson225.github.io/flight-command-center/)
 
-Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whose Arduino Nano handles RC and flight-critical control while an ESP32 is planned to aggregate sensor and Nano state. The dashboard supports a **labeled simulation** and a Firebase Realtime Database cloud reader that can be configured for authenticated telemetry. It is useful for evaluating navigation displays, alert behavior, status clarity, and responsive layout before hardware integration.
+Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whose Arduino Nano handles RC and flight-critical control while a NodeMCU/ESP gateway aggregates sensor and Nano state. The dashboard supports a **labeled simulation** and a Firebase Realtime Database cloud reader that can be configured for authenticated telemetry. It is useful for evaluating navigation displays, alert behavior, status clarity, mission packages and responsive layout before hardware integration.
 
 > **Operational status:** The cloud reader and sign-in interface require a correctly provisioned Firebase project; selecting Cloud cannot turn simulated values into live aircraft readings. Hardware telemetry and the complete aircraft installation still require bench validation. Local browser flight recording is implemented, but there is no aircraft command path. Do not use these displays to operate an aircraft.
 
@@ -15,6 +15,7 @@ Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whos
 | --- | --- | --- |
 | Cockpit | Responsive primary flight display and aircraft attitude view (roll, pitch and heading), status, navigation/trail, battery, alerts and sensor-health presentation | Calibration and independent validation against actual flight instruments |
 | Navigation map | Interactive OpenStreetMap basemap with aircraft, breadcrumb trail, reported HOME, home arrow, advisory geofence, return corridor and local grid fallback | Verified live GPS transport and a production tile service for higher traffic |
+| Mission planning | Map waypoint editing, per-leg targets/actions, HOME/geofence, validation, JSON import/export, geometric replay, Firebase library/staging and matching NodeMCU/Nano acknowledgement display | NodeMCU downloader, reliable UART transfer, persistent Nano storage, onboard navigation and stabilized control loops |
 | Theme and layout | Midnight, monochrome, black-and-white and military themes; retractable navigation; persistent theme and customizable secondary command panels | — |
 | Telemetry | Central typed state and a roughly 5 Hz deterministic simulation with selectable fault scenarios | ESP32 sensor drivers, UART decoding, calibrated sensor fusion and verified ingestion |
 | Data source | Explicit simulation and optional Firebase Realtime Database cloud reader with source and freshness labeling; direct LAN remains unavailable | Configure a Firebase project, deploy and test secure device ingestion, connect hardware, and bench-test freshness and faults |
@@ -30,6 +31,12 @@ The **Flight operations** page records full telemetry samples in browser Indexed
 
 Configurable pitch, bank, voltage, estimated battery, GPS, telemetry, failsafe and advisory-geofence rules run locally. The preflight checklist combines observable telemetry checks with explicit operator confirmations. These features support review and preparation; they do not enforce an aircraft flight envelope, verify mechanical condition, or determine airworthiness.
 
+## Mission planner
+
+The **Mission planner** page creates a complete versioned mission package rather than streaming control commands. Operators can add, drag, delete and reorder map waypoints; configure altitude, target ground speed, acceptance radius, loiter and return-home actions; verify HOME and geofence limits; simulate the route; and import/export JSON. Authenticated owners can save missions and stage one revision in Firebase. The page displays separate NodeMCU and Nano acknowledgements only when they match the staged mission ID, revision and CRC32.
+
+This release does not include the NodeMCU mission downloader, Nano storage/navigation firmware or stabilized autopilot loops, and it exposes no start/execute control. The complete mission must be independently validated and stored onboard before takeoff. A physical mode switch, nRF24 manual override and onboard failsafe remain authoritative. See the [mission planner and transfer contract](docs/mission-planner.md).
+
 The attitude view currently follows **simulated** roll, pitch and heading. For live telemetry, the ESP32 must fuse calibrated MPU9250 gyroscope and accelerometer readings for roll/pitch and use the tilt-compensated, hard/soft-iron-calibrated magnetometer to bound yaw drift and derive magnetic heading. Magnetic heading differs from GPS course over ground, especially at low speed, in wind or during a turn. Source timestamps and sensor quality must accompany the live values; an invalid or stale attitude must be clearly marked rather than presented as current.
 
 The geographic basemap loads standard OpenStreetMap tiles only for the area on screen. Its attribution stays visible. When tiles cannot load, the local coordinate grid remains available; this is not an offline map or terrain source. Tile service availability is best-effort. See the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/). If real aircraft positions are added later, review the privacy implications of third-party map requests.
@@ -39,16 +46,16 @@ The geographic basemap loads standard OpenStreetMap tiles only for the area on s
 ```mermaid
 flowchart TB
   RC["RC receiver"] --> Nano["Arduino Nano<br/>RC, servos, flight modes, failsafe"]
-  Nano <-->|"versioned UART"| ESP["ESP32<br/>MPU9250 · BMP180 · NEO-7 · voltage"]
-  ESP -->|"planned authenticated HTTPS"| Ingest["Firebase Cloud Function"]
+  Nano <-->|"versioned UART"| ESP["NodeMCU / ESP gateway<br/>sensors · telemetry · mission relay"]
+  ESP -->|"authenticated HTTPS"| Ingest["Firebase services"]
   Ingest -->|"validated latest sample"| DB["Firebase Realtime Database"]
   DB -->|"authorized read"| UI["GitHub Pages cockpit"]
   Sim["Built-in simulation"] --> UI
 ```
 
-The Nano must keep deterministic RC processing, actuator output, and onboard failsafe independent of the ESP32, Wi-Fi, the cloud, and this browser. The ESP32 is an observation and network gateway; GPS speed is **ground speed**, not airspeed. Battery remaining inferred from voltage is an estimate.
+The Nano must keep deterministic RC processing, actuator output, onboard navigation and failsafe independent of the gateway, Wi-Fi, cloud and browser. The NodeMCU/ESP is a sensor/network gateway and mission relay; GPS speed is **ground speed**, not airspeed. Battery remaining inferred from voltage is an estimate.
 
-Details: [architecture and data flow](docs/architecture.md), [safety boundaries](docs/safety.md), [UART v1 specification](docs/uart-protocol.md), [cloud and direct integration](docs/cloud-integration.md).
+Details: [architecture and data flow](docs/architecture.md), [safety boundaries](docs/safety.md), [mission planner and transfer](docs/mission-planner.md), [UART v1 specification](docs/uart-protocol.md), [cloud and direct integration](docs/cloud-integration.md).
 
 ## Run locally
 
@@ -80,9 +87,9 @@ Vite's base path is `/flight-command-center/`. Static hosting does not provide s
 | Component | Intended responsibility | Verification still needed |
 | --- | --- | --- |
 | Arduino Nano | Read RC receiver, generate control outputs, execute failsafe, report state over UART | RC link, actuator direction, endpoints, watchdog, failsafe under power and link faults |
-| ESP32 | Parse UART; read MPU9250, BMP180, NEO-7, voltage sensor; send telemetry | Correct I²C/GPS wiring, calibration, fusion, ADC divider and reference, TLS, timing |
+| NodeMCU/ESP gateway | Parse UART; read connected sensors; send telemetry; relay sealed missions and matching Nano acknowledgements | Correct wiring, calibration, fusion, TLS, bounded mission transfer and timing |
 | Firebase backend | Authenticate devices at a trusted Cloud Function, validate samples, write RTDB, restrict reads with Firebase Auth and Security Rules | Project provisioning, per-aircraft membership tests, replay protection, ingestion deployment and retention |
-| Browser | Display simulation or authenticated Firebase cloud samples with source and freshness; review recent local samples | Verified aircraft telemetry, stale/offline bench tests, independent validation |
+| Browser | Display simulation or authenticated Firebase cloud samples; record/review flights; plan, validate, simulate and stage sealed missions | Verified aircraft telemetry, stale/offline bench tests, independent validation |
 
 The [UART protocol](docs/uart-protocol.md) is a proposed integration contract, not firmware tested on the aircraft. `firmware/` contains a transport reference and no flight-control sketch. `firebase/` contains RTDB rules and a trusted ingestion service that require a separately provisioned Firebase project. `supabase/` contains an earlier optional schema foundation; it is not used by the Firebase cloud reader or deployed by the frontend build.
 
@@ -106,7 +113,8 @@ Before any field use, complete the independent ground-test and failure-case chec
 
 ## Next steps
 
-1. Implement and bench-test the Nano UART publisher and ESP32 parser against the same vectors in [UART v1](docs/uart-protocol.md).
-2. Integrate calibrated sensors and actual source timestamps, with unavailable values represented as null and per-sensor health.
-3. Set up Firebase Auth and Realtime Database, provision aircraft membership, deploy the trusted HTTPS ingestion service, and test cross-aircraft read denial and device replay rejection.
-4. Connect the ESP32 publisher and verify real values, timing, sensor failures and disconnects on the bench; validate recordings and exported files against an independent reference before relying on post-flight analysis.
+1. Exercise the map planner, JSON export/import, checksum and route simulator with non-aircraft fixtures.
+2. Deploy and test Firebase rules, including owner isolation, device-only mission reads/acknowledgements and denial of unknown paths.
+3. Implement the bounded NodeMCU-to-Nano transfer, persistent storage and dual acknowledgement contract with propeller-free fault injection.
+4. Implement and bench-test onboard navigation and stabilized loops with physical manual-mode permission and immediate nRF24/failsafe priority.
+5. Integrate calibrated sensors and actual source timestamps, then verify real telemetry, disconnects, recordings and exports against independent references.

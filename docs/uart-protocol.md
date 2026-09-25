@@ -67,6 +67,8 @@ $FD1,A,<command_id>,<result>,<actual_mode>,<reason>*<CRC16><LF>
 
 Command IDs and ACKs need session scoping and audit correlation across gateway/backend restarts. Never let a browser create a trusted ACK. A cloud command system also needs expiry *before* the gateway sends it, and an authorization/revocation check; a Nano cannot compare its `uptime_ms` with an Internet UTC timestamp. Do not use UART CRC as a security signature.
 
+Mission packages use a separate proposed multi-frame extension described in [mission planner and onboard transfer](mission-planner.md). A mission CRC32 covers the complete canonical route while each UART frame retains this protocol's CRC-16. Receiving or validating a mission does not apply a mode or actuator command.
+
 ## Reference implementation and test vectors
 
 `firmware/uart_reference.py` is a Python standard-library codec to exercise wire vectors and strict validation; it deliberately does not drive a servo, poll sensors, provision Wi-Fi, or send flight commands. Run:

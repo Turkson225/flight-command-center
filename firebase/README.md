@@ -1,6 +1,6 @@
 # Firebase Realtime Database integration
 
-These are deployable backend templates. The GitHub Pages build does **not** deploy Firebase. No Firebase project, Auth user, database, device key, or ESP32 publisher has been configured in this repository.
+These are deployable backend templates. The GitHub Pages build does **not** deploy Firebase. Telemetry ingestion and the mission paths have different trust boundaries: telemetry may use the validated Function or the explicit direct-device test; mission staging is an authenticated owner write that a dedicated NodeMCU account can read and acknowledge.
 
 ```text
 ESP32 -- HTTPS + device HMAC --> Cloud Function ingestTelemetry
@@ -12,7 +12,13 @@ ESP32 -- HTTPS + device HMAC --> Cloud Function ingestTelemetry
                          GitHub Pages dashboard (read only)
 ```
 
-The Arduino Nano must remain responsible for control and failsafe. The browser reads observations; this backend exposes no aircraft command write path.
+The Arduino Nano must remain responsible for control, onboard navigation and failsafe. The browser reads observations and can store or stage one complete mission package. There is no continuous actuator/steering path and no mission start/execute field.
+
+## Mission storage and staging
+
+The rules add an owner-only mission library at `/missionLibraries/<ownerUid>/<aircraftId>/<missionId>` and one transfer slot at `/aircraft/<aircraftId>/missionTransfer`. An authorized owner may stage a structurally valid complete mission. The dedicated FD-X1 device UID may read `pending` and write matching `nodeMcu` and `nano` acknowledgement records; all unknown siblings remain denied. The Nano acknowledgement must be relayed only after its independent CRC32, range, geofence and persistent-storage checks succeed.
+
+Firebase receipt does not start or authorize autonomous flight. The NodeMCU mission downloader and Nano transfer/navigation firmware are not implemented in the current reference sketch. See [`docs/mission-planner.md`](../docs/mission-planner.md) before implementing them.
 
 ## Create and provision a Firebase project
 
@@ -92,7 +98,7 @@ The Function stores only the **latest** sample at `/aircraft/<AIRCRAFT_ID>/telem
 
 `receivedAt` comes from the trusted Function's clock, `sample.timestamp` from the aircraft's capture clock. Realtime Database removes keys with `null` values, so web readers must restore missing nullable measurements as null. The `_ingest` sibling is internal ordering/rate state and cannot be read by browser rules. There is no recording, replay, or flight-history storage in this first integration; old `latest` data remains until overwritten, so the dashboard must mark it stale/offline by age. A successful browser subscription does not prove that the aircraft is currently transmitting.
 
-Rules grant each signed-in Firebase Auth UID a read of its own `/memberships/<uid>/aircraft` and of telemetry for aircraft with a `true` membership. All client writes and other reads are denied. Admin SDK code bypasses these rules, so Function validation is the write boundary. Test both member and non-member access in the [Realtime Database emulator](https://firebase.google.com/docs/emulator-suite/connect_rtdb) before using actual aircraft data. Browser config and sign-in do not create membership.
+Rules grant each signed-in Firebase Auth UID a read of its own `/memberships/<uid>/aircraft` and telemetry for aircraft with a `true` membership. Members may write only their own structurally validated mission library and the single staged package; they may clear stale acknowledgement records only as part of restaging. The dedicated device UID can access only the explicitly granted telemetry and mission-transfer paths. Admin SDK code bypasses these rules, so Function validation remains the telemetry write boundary. Test member, non-member and device access in the [Realtime Database emulator](https://firebase.google.com/docs/emulator-suite/connect_rtdb) before using actual aircraft data. Browser config and sign-in do not create membership.
 
 ## Deployment limits
 

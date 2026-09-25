@@ -9,12 +9,140 @@
         }
       }
     },
+    "missionLibraries": {
+      "$uid": {
+        "$aircraftId": {
+          ".read": "auth != null && auth.uid === $uid && root.child('memberships').child(auth.uid).child('aircraft').child($aircraftId).val() === true",
+          "$missionId": {
+            ".write": "auth != null && auth.uid === $uid && root.child('memberships').child(auth.uid).child('aircraft').child($aircraftId).val() === true",
+            ".validate": "!newData.exists() || (newData.hasChildren(['schemaVersion', 'id', 'name', 'aircraftId', 'revision', 'createdAt', 'updatedAt', 'home', 'geofenceRadiusM', 'waypoints', 'checksum']) && newData.child('schemaVersion').val() === 1 && newData.child('id').val() === $missionId && newData.child('aircraftId').val() === $aircraftId && newData.child('revision').isNumber() && newData.child('revision').val() >= 1 && newData.child('revision').val() % 1 === 0 && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber())",
+            "schemaVersion": { ".validate": "newData.val() === 1" },
+            "id": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/) && newData.val() === $missionId" },
+            "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60" },
+            "aircraftId": { ".validate": "newData.isString() && newData.val() === $aircraftId" },
+            "revision": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0" },
+            "createdAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "updatedAt": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now" },
+            "home": {
+              ".validate": "newData.hasChildren(['latitude', 'longitude', 'confirmedByOperator'])",
+              "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+              "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+              "confirmedByOperator": { ".validate": "newData.isBoolean()" },
+              "$other": { ".validate": false }
+            },
+            "geofenceRadiusM": { ".validate": "newData.isNumber() && newData.val() >= 100 && newData.val() <= 5000" },
+            "waypoints": {
+              ".validate": "newData.numChildren() >= 1 && newData.numChildren() <= 25",
+              "$index": {
+                ".validate": "$index.matches(/^(0|[1-9]|1[0-9]|2[0-4])$/) && newData.hasChildren(['id', 'latitude', 'longitude', 'altitudeM', 'targetSpeedKmh', 'acceptanceRadiusM', 'action', 'loiterSeconds'])",
+                "id": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/)" },
+                "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+                "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+                "altitudeM": { ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 500" },
+                "targetSpeedKmh": { ".validate": "newData.isNumber() && newData.val() >= 15 && newData.val() <= 160" },
+                "acceptanceRadiusM": { ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 300" },
+                "action": { ".validate": "newData.isString() && (newData.val() === 'waypoint' || newData.val() === 'loiter' || newData.val() === 'return-home')" },
+                "loiterSeconds": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1800 && newData.val() % 1 === 0 && (newData.parent().child('action').val() !== 'loiter' || newData.val() >= 5)" },
+                "$other": { ".validate": false }
+              }
+            },
+            "checksum": { ".validate": "newData.isString() && newData.val().matches(/^[0-9A-F]{8}$/)" },
+            "$other": { ".validate": false }
+          }
+        }
+      }
+    },
     "aircraft": {
       "$aircraftId": {
         "telemetry": {
           "latest": {
-            ".read": "auth != null && root.child('memberships').child(auth.uid).child('aircraft').child($aircraftId).val() === true"
+            ".read": "auth != null && root.child('memberships').child(auth.uid).child('aircraft').child($aircraftId).val() === true",
+            ".write": "auth != null && auth.uid === '1LH9Fy6qHgNtyVa27zXn55EWDQ02' && $aircraftId === 'FD-X1' && newData.exists() && (!data.exists() || now - data.child('receivedAt').val() >= 900)",
+            ".validate": "newData.hasChildren(['schemaVersion', 'receivedAt', 'sample'])",
+            "schemaVersion": { ".validate": "newData.val() === 1" },
+            "receivedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+            "sample": {
+              ".validate": "newData.hasChildren(['timestamp', 'aircraftId', 'attitude', 'navigation', 'environment', 'power', 'control', 'system', 'sensors']) && newData.child('aircraftId').val() === $aircraftId && newData.child('timestamp').isNumber() && newData.child('timestamp').val() >= now - 60000 && newData.child('timestamp').val() <= now + 5000"
+            },
+            "$other": { ".validate": false }
           }
+        },
+        "missionTransfer": {
+          "pending": {
+            ".read": "auth != null && (auth.uid === '1LH9Fy6qHgNtyVa27zXn55EWDQ02' || root.child('memberships').child(auth.uid).child('aircraft').child($aircraftId).val() === true)",
+            ".write": "auth != null && root.child('memberships').child(auth.uid).child('aircraft').child($aircraftId).val() === true",
+            ".validate": "newData.hasChildren(['schemaVersion', 'requestId', 'requestedAt', 'requestedBy', 'mission'])",
+            "schemaVersion": { ".validate": "newData.val() === 1" },
+            "requestId": { ".validate": "newData.isString() && newData.val().matches(/^transfer-[A-Za-z0-9_-]{1,55}$/)" },
+            "requestedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+            "requestedBy": { ".validate": "newData.isString() && newData.val() === auth.uid" },
+            "mission": {
+              ".validate": "newData.hasChildren(['schemaVersion', 'id', 'name', 'aircraftId', 'revision', 'createdAt', 'updatedAt', 'home', 'geofenceRadiusM', 'waypoints', 'checksum']) && newData.child('schemaVersion').val() === 1 && newData.child('aircraftId').val() === $aircraftId && newData.child('revision').isNumber() && newData.child('revision').val() >= 1 && newData.child('revision').val() % 1 === 0",
+              "schemaVersion": { ".validate": "newData.val() === 1" },
+              "id": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/)" },
+              "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60" },
+              "aircraftId": { ".validate": "newData.isString() && newData.val() === $aircraftId" },
+              "revision": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0" },
+              "createdAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+              "updatedAt": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now" },
+              "home": {
+                ".validate": "newData.hasChildren(['latitude', 'longitude', 'confirmedByOperator']) && newData.child('confirmedByOperator').val() === true",
+                "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+                "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+                "confirmedByOperator": { ".validate": "newData.val() === true" },
+                "$other": { ".validate": false }
+              },
+              "geofenceRadiusM": { ".validate": "newData.isNumber() && newData.val() >= 100 && newData.val() <= 5000" },
+              "waypoints": {
+                ".validate": "newData.numChildren() >= 1 && newData.numChildren() <= 25",
+                "$index": {
+                  ".validate": "$index.matches(/^(0|[1-9]|1[0-9]|2[0-4])$/) && newData.hasChildren(['id', 'latitude', 'longitude', 'altitudeM', 'targetSpeedKmh', 'acceptanceRadiusM', 'action', 'loiterSeconds'])",
+                  "id": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/)" },
+                  "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+                  "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+                  "altitudeM": { ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 500" },
+                  "targetSpeedKmh": { ".validate": "newData.isNumber() && newData.val() >= 15 && newData.val() <= 160" },
+                  "acceptanceRadiusM": { ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 300" },
+                  "action": { ".validate": "newData.isString() && (newData.val() === 'waypoint' || newData.val() === 'loiter' || newData.val() === 'return-home')" },
+                  "loiterSeconds": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1800 && newData.val() % 1 === 0 && (newData.parent().child('action').val() !== 'loiter' || newData.val() >= 5)" },
+                  "$other": { ".validate": false }
+                }
+              },
+              "checksum": { ".validate": "newData.isString() && newData.val().matches(/^[0-9A-F]{8}$/)" },
+              "$other": { ".validate": false }
+            },
+            "$other": { ".validate": false }
+          },
+          "acknowledgements": {
+            ".read": "auth != null && root.child('memberships').child(auth.uid).child('aircraft').child($aircraftId).val() === true",
+            ".write": "auth != null && root.child('memberships').child(auth.uid).child('aircraft').child($aircraftId).val() === true && !newData.exists()",
+            "nodeMcu": {
+              ".write": "auth != null && auth.uid === '1LH9Fy6qHgNtyVa27zXn55EWDQ02' && $aircraftId === 'FD-X1'",
+              ".validate": "newData.hasChildren(['missionId', 'revision', 'checksum', 'status', 'acknowledgedAt']) && newData.child('missionId').val() === root.child('aircraft').child($aircraftId).child('missionTransfer').child('pending').child('mission').child('id').val() && newData.child('revision').val() === root.child('aircraft').child($aircraftId).child('missionTransfer').child('pending').child('mission').child('revision').val() && newData.child('checksum').val() === root.child('aircraft').child($aircraftId).child('missionTransfer').child('pending').child('mission').child('checksum').val()",
+              "missionId": { ".validate": "newData.isString()" },
+              "revision": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0" },
+              "checksum": { ".validate": "newData.isString() && newData.val().matches(/^[0-9A-F]{8}$/)" },
+              "status": { ".validate": "newData.val() === 'received' || newData.val() === 'stored' || newData.val() === 'rejected'" },
+              "acknowledgedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+              "detail": { ".validate": "newData.isString() && newData.val().length <= 160" },
+              "currentWaypointIndex": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 25 && newData.val() % 1 === 0" },
+              "$other": { ".validate": false }
+            },
+            "nano": {
+              ".write": "auth != null && auth.uid === '1LH9Fy6qHgNtyVa27zXn55EWDQ02' && $aircraftId === 'FD-X1'",
+              ".validate": "newData.hasChildren(['missionId', 'revision', 'checksum', 'status', 'acknowledgedAt']) && newData.child('missionId').val() === root.child('aircraft').child($aircraftId).child('missionTransfer').child('pending').child('mission').child('id').val() && newData.child('revision').val() === root.child('aircraft').child($aircraftId).child('missionTransfer').child('pending').child('mission').child('revision').val() && newData.child('checksum').val() === root.child('aircraft').child($aircraftId).child('missionTransfer').child('pending').child('mission').child('checksum').val()",
+              "missionId": { ".validate": "newData.isString()" },
+              "revision": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0" },
+              "checksum": { ".validate": "newData.isString() && newData.val().matches(/^[0-9A-F]{8}$/)" },
+              "status": { ".validate": "newData.val() === 'validated' || newData.val() === 'rejected'" },
+              "acknowledgedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+              "detail": { ".validate": "newData.isString() && newData.val().length <= 160" },
+              "currentWaypointIndex": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 25 && newData.val() % 1 === 0" },
+              "$other": { ".validate": false }
+            },
+            "$other": { ".validate": false }
+          },
+          "$other": { ".validate": false }
         }
       }
     }

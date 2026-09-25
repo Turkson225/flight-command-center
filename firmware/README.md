@@ -11,3 +11,5 @@ python3 -m unittest discover -s firmware -p 'test_*.py'
 ```
 
 Before real telemetry is enabled, the ESP32 also needs MPU9250 calibration/fusion, BMP180 filtering/reference pressure, NEO-7 parser and fix validation, calibrated voltage divider, device authentication and a TLS-verified upload path. See [cloud integration](../docs/cloud-integration.md) and [safety](../docs/safety.md).
+
+The dashboard now defines a staged mission package and acknowledgement interface, but this directory does not yet contain the NodeMCU downloader, mission UART transfer, Nano persistent storage, navigator or stabilization loops. Implement those only against the bounded [mission transfer contract](../docs/mission-planner.md), with propeller-free fault injection and manual/failsafe priority.

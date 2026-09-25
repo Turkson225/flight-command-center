@@ -2,15 +2,16 @@
 
 ## Control and observation
 
-The Arduino Nano is the only controller responsible for time-sensitive aircraft behavior: RC link processing, servo and ESC signals, mode rules, and failsafe. The ESP32 reads Nano state via UART, receives navigation/sensor inputs, and eventually forwards validated telemetry. The browser is an observer and future high-level command requester. Losing power or connectivity to the ESP32, backend, or browser must not change the Nano's ability to apply its onboard failsafe.
+The Arduino Nano is the only controller responsible for time-sensitive aircraft behavior: RC link processing, servo and ESC signals, mode rules, onboard navigation, and failsafe. The NodeMCU/ESP gateway reads Nano state via UART, receives navigation/sensor inputs, forwards validated telemetry, and may relay a complete staged mission. The browser observes telemetry and prepares mission packages; it does not stream steering. Losing power or connectivity to the gateway, backend, or browser must not change the Nano's ability to navigate locally or apply its onboard failsafe.
 
 ```mermaid
 flowchart TB
   R["RC receiver"] --> N["Nano: control + failsafe"]
-  N <-->|"UART v1 state / future requests"| E["ESP32: sensors + telemetry gateway"]
+  N <-->|"UART state + sealed mission transfer"| E["NodeMCU / ESP: sensor + network gateway"]
   S["MPU9250 · BMP180 · NEO-7 · voltage"] --> E
   E -->|"signed HTTPS when implemented"| B["Firebase Function + Realtime Database"]
   B -->|"member-only read when configured"| U["Cockpit on GitHub Pages"]
+  U -->|"complete mission staging only"| B
   M["Simulated source"] --> U
 ```
 
@@ -48,7 +49,7 @@ Set home only after a valid GPS fix and a deliberate rule or operator action. Ho
 
 ## Proposed trust boundaries
 
-The Nano's control loop trusts only its verified RC and onboard inputs. It should validate any high-level UART request and reject it during failsafe or unsafe transitions. The ESP32 should reject malformed UART and sensor samples before onward transport. A trusted HTTPS endpoint should authenticate the aircraft and validate timestamps, ranges, sequence, and rate limits; the browser should only read aircraft allowed by its authenticated role. See [cloud integration](cloud-integration.md) and [safety](safety.md).
+The Nano's control loop trusts only its verified RC and onboard inputs. It must independently validate a complete mission before persistent storage and must never start it on receipt. The gateway should reject malformed UART, sensor and mission data before onward transport. Telemetry ingestion should authenticate the aircraft and validate timestamps, ranges, sequence and rate limits; the browser should only access aircraft allowed by its authenticated role. See [mission planning](mission-planner.md), [cloud integration](cloud-integration.md) and [safety](safety.md).
 
 ## Milestone status
 

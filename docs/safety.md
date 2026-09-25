@@ -29,6 +29,10 @@ Freshness thresholds must be chosen from measured link rate and tested. In the p
 
 Mode requests may be considered later only when a versioned command channel, server authorization, operator confirmation, onboard transition checks, deduplication, timeout reporting and audit records all work. The Nano should ACK only after the requested mode has actually been applied. Firmware must define allowed transitions and precedence of failsafe. No automatic blind retry after an ambiguous timeout. Test loss, duplication, reordering, reboot, and stale commands. See [UART protocol](uart-protocol.md).
 
+## Mission package release gate
+
+A staged Firebase mission is data for later onboard use, not authority to fly it. The Nano must receive, validate and persist the complete package before acknowledging it, and receipt must not change mode. It must reject unsupported versions, checksum failures, range/waypoint/geofence failures, partial transfers and storage read-back failures without replacing the last valid mission. A physical switch must permit mission mode locally; nRF24 manual override and failsafe must preempt it. The navigator and stabilization loops must continue independently of the NodeMCU, Wi-Fi, Firebase and browser. See [mission planner and onboard transfer](mission-planner.md).
+
 ## Ground validation checklist before connecting an aircraft
 
 1. Compare the physical RC and servo movement with command direction, range, neutral and endpoints; verify with propeller removed.
