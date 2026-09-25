@@ -10,20 +10,29 @@ import { isCurrentSensor, type AircraftTelemetry, type FlightAlert, type Simulat
 import './styles.css'
 
 type View = 'command' | 'navigation' | 'instruments' | 'analysis' | 'telemetry' | 'sensors' | 'alerts' | 'engineering'
-type Theme = 'midnight' | 'monochrome' | 'military'
+type Theme = 'midnight' | 'monochrome' | 'blackwhite' | 'military'
 type IconName = 'grid' | 'map' | 'horizon' | 'chart' | 'wave' | 'chip' | 'alert' | 'tool' | 'expand' | 'chevron' | 'play' | 'pause' | 'reset' | 'copy' | 'arrow' | 'radio' | 'clock' | 'download' | 'menu' | 'close' | 'plane' | 'pin' | 'bolt' | 'palette'
 
 const THEME_STORAGE_KEY = 'flight-command-center-theme'
+const SIDEBAR_STORAGE_KEY = 'flight-command-center-sidebar-collapsed'
 
 function savedTheme(): Theme | null {
   try {
     const value = window.localStorage.getItem(THEME_STORAGE_KEY)
-    if (value === 'midnight' || value === 'monochrome' || value === 'military') return value
+    if (value === 'midnight' || value === 'monochrome' || value === 'blackwhite' || value === 'military') return value
     if (value === 'dark') return 'midnight'
     if (value === 'light') return 'monochrome'
     return null
   } catch {
     return null
+  }
+}
+
+function savedSidebarCollapsed() {
+  try {
+    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true'
+  } catch {
+    return false
   }
 }
 
@@ -34,6 +43,7 @@ function systemTheme(): Theme {
 const THEMES: { key: Theme; label: string }[] = [
   { key: 'midnight', label: 'Midnight' },
   { key: 'monochrome', label: 'Monochrome' },
+  { key: 'blackwhite', label: 'Black & White' },
   { key: 'military', label: 'Military' },
 ]
 
@@ -298,6 +308,7 @@ export default function App() {
   const { snapshot, source, status, ageMs, freshnessNow, history, alerts, scenario, running, selectSource, setScenario, start, pause, reset, durationSec, cloudConnection, cloudMessage, cloudReceivedAt } = telemetry
   const [view, setView] = useState<View>(getView)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(savedSidebarCollapsed)
   const [utc, setUtc] = useState(new Date())
   const [theme, setTheme] = useState<Theme>(() => savedTheme() ?? systemTheme())
   const stateLabel = normalizedStatus(String(status), source, snapshot)
@@ -314,7 +325,7 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     document.documentElement.style.colorScheme = 'dark'
-    const themeColors: Record<Theme, string> = { midnight: '#071018', monochrome: '#050505', military: '#11150e' }
+    const themeColors: Record<Theme, string> = { midnight: '#071018', monochrome: '#050505', blackwhite: '#000000', military: '#11150e' }
     document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', themeColors[theme])
   }, [theme])
   useEffect(() => { const onKey = (event: KeyboardEvent) => { if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.metaKey || event.ctrlKey || event.altKey) return; if (event.key.toLowerCase() === 'f') void toggleFullscreen(); if (event.key.toLowerCase() === 'm') window.location.hash = '/navigation'; if (event.key.toLowerCase() === 'a') window.location.hash = '/alerts'; if (event.key.toLowerCase() === 'l') window.location.hash = '/telemetry' }; window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey) }, [])
@@ -322,13 +333,15 @@ export default function App() {
 
   async function toggleFullscreen() { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen() } catch { /* unsupported browser */ } }
   function chooseTheme(next: Theme) { setTheme(next); try { window.localStorage.setItem(THEME_STORAGE_KEY, next) } catch { /* Theme remains available for this session. */ } }
+  function toggleSidebar() { setSidebarCollapsed(current => { const next = !current; try { window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next)) } catch { /* Layout remains available for this session. */ } return next }) }
   function exportBuffer() { const blob = new Blob([JSON.stringify({ source, exportedAt: new Date().toISOString(), limitation: 'Current in-memory telemetry buffer only; not a flight recording.', samples: history }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'fd-x1-telemetry-buffer.json'; link.click(); URL.revokeObjectURL(url) }
 
   return <div className="app-shell">
-    <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+    <aside className={`sidebar ${sidebarOpen ? 'open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}>
       <div className="brand"><div className="brand-mark"><Icon name="plane" size={26}/></div><div><strong>FLIGHT<span>COMMAND</span></strong><small>CENTER / FD-X</small></div><button className="sidebar-close icon-button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}><Icon name="close"/></button></div>
+      <button className="sidebar-collapse icon-button" type="button" aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!sidebarCollapsed} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={toggleSidebar}><Icon name="chevron" size={15}/></button>
       <div className="sidebar-context"><div className="side-rule"/><span className="eyebrow">AIRCRAFT SELECTED</span><div className="aircraft-name"><span className="aircraft-monogram">01</span><div><strong>FD-X1</strong><small>{snapshot?.aircraftId ?? 'Fixed-wing platform'}</small></div><Icon name="chevron" size={14}/></div></div>
-      <nav aria-label="Primary navigation">{NAV.map((item, i) => <div key={item.key}>{(i === 0 || NAV[i - 1].section !== item.section) && <div className="nav-section">{item.section}</div>}<a href={`#/${item.key}`} className={`nav-link ${view === item.key ? 'active' : ''}`} aria-current={view === item.key ? 'page' : undefined}><Icon name={item.icon} size={18}/><span>{item.label}</span>{item.key === 'alerts' && latestAlerts > 0 && <b>{latestAlerts}</b>}</a></div>)}</nav>
+      <nav aria-label="Primary navigation">{NAV.map((item, i) => <div key={item.key}>{(i === 0 || NAV[i - 1].section !== item.section) && <div className="nav-section">{item.section}</div>}<a href={`#/${item.key}`} className={`nav-link ${view === item.key ? 'active' : ''}`} aria-current={view === item.key ? 'page' : undefined} title={sidebarCollapsed ? item.label : undefined}><Icon name={item.icon} size={18}/><span>{item.label}</span>{item.key === 'alerts' && latestAlerts > 0 && <b>{latestAlerts}</b>}</a></div>)}</nav>
       <div className="sidebar-bottom"><div className="source-readout"><span className="eyebrow">TELEMETRY SOURCE</span><div><i className={`status-lamp ${stateLabel === 'SIMULATION' || stateLabel === 'LIVE' ? 'good' : stateLabel === 'STALE' || stateLabel === 'LOST' ? 'warn' : 'unknown'}`}/><strong>{sourceLabel}</strong><span>{stateLabel}</span></div></div><div className="sidebar-version"><span>FD-X COMMAND SYSTEM</span><b>v0.4.0 / PROTOTYPE</b></div></div>
     </aside>
     {sidebarOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={() => setSidebarOpen(false)}/>}

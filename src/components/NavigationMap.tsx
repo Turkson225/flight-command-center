@@ -112,7 +112,7 @@ export function NavigationMap({
 }: {
   snapshot: AircraftTelemetry | null;
   history: AircraftTelemetry[];
-  theme?: 'midnight' | 'monochrome' | 'military';
+  theme?: 'midnight' | 'monochrome' | 'blackwhite' | 'military';
   source?: TelemetrySource;
   status: string;
   ageMs: number | null;

@@ -7,12 +7,12 @@
     <script>
       try {
         const savedTheme = localStorage.getItem('flight-command-center-theme');
-        const initialTheme = ['midnight', 'monochrome', 'military'].includes(savedTheme)
+        const initialTheme = ['midnight', 'monochrome', 'blackwhite', 'military'].includes(savedTheme)
           ? savedTheme
           : savedTheme === 'light' ? 'monochrome' : 'midnight';
         document.documentElement.dataset.theme = initialTheme;
         document.querySelector('meta[name="theme-color"]').content = {
-          midnight: '#071018', monochrome: '#050505', military: '#11150e'
+          midnight: '#071018', monochrome: '#050505', blackwhite: '#000000', military: '#11150e'
         }[initialTheme];
       } catch { document.documentElement.dataset.theme = 'midnight'; }
     </script>

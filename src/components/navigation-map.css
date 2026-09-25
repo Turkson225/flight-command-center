@@ -176,11 +176,13 @@
 /* Only raster tiles are tinted. Markers and OSM's attribution retain contrast. */
 .fcc-nav-map[data-theme='midnight'] .leaflet-tile-pane,
 .fcc-nav-map[data-theme='monochrome'] .leaflet-tile-pane,
+.fcc-nav-map[data-theme='blackwhite'] .leaflet-tile-pane,
 .fcc-nav-map[data-theme='military'] .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.78) contrast(1.08) saturate(0.82);
 }
 
-.fcc-nav-map[data-theme='monochrome'] .leaflet-tile-pane {
+.fcc-nav-map[data-theme='monochrome'] .leaflet-tile-pane,
+.fcc-nav-map[data-theme='blackwhite'] .leaflet-tile-pane {
   filter: invert(1) grayscale(1) brightness(.72) contrast(1.18);
 }
 
@@ -766,4 +768,33 @@
 
 .map-shell .fcc-nav-map[data-theme='light']:fullscreen .fcc-nav-map__toolbar {
   background: #e8f1f3;
+}
+
+.fcc-nav-map[data-theme='blackwhite'] {
+  --map-edge: rgba(255, 255, 255, 0.34);
+  --map-muted: #c3c3c3;
+  --map-cyan: #ffffff;
+  background: #000;
+  color: #fff;
+  box-shadow: none;
+}
+
+.fcc-nav-map[data-theme='blackwhite'] .fcc-nav-map__header,
+.fcc-nav-map[data-theme='blackwhite'] .fcc-nav-map__footer,
+.fcc-nav-map[data-theme='blackwhite'] .fcc-nav-map__toolbar,
+.fcc-nav-map[data-theme='blackwhite'] .fcc-nav-map__position-row {
+  background: #050505;
+}
+
+.fcc-nav-map[data-theme='blackwhite'] h2,
+.fcc-nav-map[data-theme='blackwhite'] .fcc-nav-map__coordinates,
+.fcc-nav-map[data-theme='blackwhite'] .fcc-nav-map__datum strong {
+  color: #fff;
+}
+
+.fcc-nav-map[data-theme='blackwhite'] .fcc-nav-map__copy,
+.fcc-nav-map[data-theme='blackwhite'] .fcc-nav-map__toolbar button {
+  color: #fff;
+  background: #090909;
+  border-color: #777;
 }
