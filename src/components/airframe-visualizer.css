@@ -1,0 +1,51 @@
+.airframe{min-width:0;color:var(--text);font-family:var(--mono)}
+.airframe__stage{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:10px;min-height:245px}
+.airframe__orientation{position:relative;min-width:0;overflow:hidden;border:1px solid var(--border);background:radial-gradient(circle at 50% 47%,rgba(90,167,184,.12),transparent 34%),linear-gradient(155deg,#0c1a23,#111f29);isolation:isolate}
+.airframe__grid{position:absolute;inset:0;background-image:linear-gradient(rgba(123,172,184,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(123,172,184,.055) 1px,transparent 1px);background-size:24px 24px;mask-image:radial-gradient(circle,#000 25%,transparent 76%)}
+.airframe__compass{position:absolute;width:min(275px,90%);aspect-ratio:1;left:50%;top:50%;transform:translate(-50%,-50%);overflow:visible}
+.airframe__compass circle{fill:none;stroke:color-mix(in srgb,var(--muted) 38%,transparent);stroke-width:1}
+.airframe__compass g{transition:transform .25s linear}
+.airframe__compass line{stroke:color-mix(in srgb,var(--muted) 52%,transparent);stroke-width:1}
+.airframe__compass text{fill:var(--muted);font:11px var(--mono)}
+.airframe__compass text:first-of-type{fill:var(--amber)}
+.airframe__heading-index{position:absolute;top:5px;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:9px solid var(--amber)}
+.airframe__shadow{position:absolute;left:50%;top:54%;width:155px;height:34px;border-radius:50%;background:#0008;filter:blur(12px);transition:transform .22s linear}
+.airframe__model{position:absolute;left:50%;top:50%;width:min(245px,72%);height:auto;color:#9fc3ca;filter:drop-shadow(0 8px 8px #0008);transform-style:preserve-3d;transition:transform .2s linear;z-index:2}
+.airframe__model svg{display:block;width:100%;height:auto;overflow:visible}
+.airframe__wing,.airframe__tailplane{fill:#506e78;stroke:#9ebbc2;stroke-width:1.5}
+.airframe__fuselage{fill:url(#airframe-body);stroke:#d5e3e3;stroke-width:1.5}
+.airframe__canopy{fill:#122b36;stroke:#7ba9b4;stroke-width:1}.airframe__fin{fill:#3f606b;stroke:#9db9c0;stroke-width:1}
+.airframe__hinge{fill:none;stroke:#132630;stroke-width:2;stroke-dasharray:4 3}
+.airframe__surface{fill:var(--cyan);stroke:#d9f7f7;stroke-width:1;opacity:.92;transition:transform .16s linear;transform-box:fill-box}
+.airframe__surface--rudder{fill:var(--amber);transform-box:view-box}
+.airframe__hub{fill:#f0d394;stroke:#fff1c3;stroke-width:2}
+.airframe__thrust{position:absolute;left:50%;top:70%;transform:translateX(-50%);display:flex;gap:8px;z-index:1;transition:opacity .2s}
+.airframe__thrust i{display:block;width:2px;height:45px;background:linear-gradient(var(--cyan),transparent);animation:airframe-thrust .85s linear infinite}.airframe__thrust i:nth-child(2){animation-delay:-.3s}.airframe__thrust i:nth-child(3){animation-delay:-.6s}
+@keyframes airframe-thrust{from{transform:translateY(-7px);opacity:.9}to{transform:translateY(18px);opacity:0}}
+.airframe__axis-label{position:absolute;bottom:8px;padding:4px 6px;background:#071219d9;border:1px solid var(--border);color:#b8cbd0;font-size:8px;letter-spacing:.05em;z-index:4}.airframe__axis-label--roll{left:8px}.airframe__axis-label--heading{right:8px}
+.airframe__unavailable{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;background:#0b1822df;text-align:center}.airframe__unavailable strong{font-size:10px;letter-spacing:.08em}.airframe__unavailable span{color:var(--muted);font:10px 'DM Sans',sans-serif}
+.airframe__stale-tag{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;background:#352a23ed;border:1px solid #9d704c;color:#f0c391;padding:6px 8px;font-size:8px;white-space:nowrap}
+.airframe--stale .airframe__model,.airframe--stale .airframe__compass{filter:grayscale(.65) brightness(.7)}
+.airframe__pitch{display:flex;flex-direction:column;align-items:center;min-width:0;border:1px solid var(--border);background:#0c1922;padding:8px 6px}
+.airframe__pitch-title{color:var(--muted);font-size:8px;letter-spacing:.14em}
+.airframe__pitch-window{position:relative;width:100%;flex:1;min-height:142px;overflow:hidden;margin:7px 0;border-block:1px solid var(--border);background:linear-gradient(#183747 50%,#4b493d 50%)}
+.airframe__pitch-scale{position:absolute;inset:0;transition:transform .2s linear}
+.airframe__pitch-scale>div{position:absolute;left:0;right:0;display:flex;align-items:center;gap:3px;transform:translateY(-50%);color:#edf4ef;font-size:8px;text-shadow:0 1px 2px #000}
+.airframe__pitch-scale i{height:1px;flex:1;background:currentColor}
+.airframe__pitch-pointer{position:absolute;left:0;right:0;top:50%;height:2px;background:var(--amber);box-shadow:0 0 7px color-mix(in srgb,var(--amber) 65%,transparent)}
+.airframe__pitch-pointer:before{content:'';position:absolute;left:-1px;top:-4px;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid var(--amber)}
+.airframe__pitch>strong{font-size:17px;color:#f4f7f4;font-weight:500;white-space:nowrap}.airframe__pitch>span{margin-top:4px;color:var(--amber);font-size:7px;letter-spacing:.08em;white-space:nowrap}
+.airframe__readouts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.airframe__surface-bar,.airframe__throttle-readout{min-width:0;padding:9px;border:1px solid var(--border);background:color-mix(in srgb,var(--panel-alt) 88%,#000)}
+.airframe__surface-label{display:flex;align-items:center;justify-content:space-between;gap:4px}.airframe__surface-label span,.airframe__throttle-readout>span{color:var(--muted);font-size:7px;letter-spacing:.08em}.airframe__surface-label strong,.airframe__throttle-readout>strong{color:#e7efef;font-size:9px;font-weight:500}
+.airframe__surface-track{height:5px;margin-top:9px;background:#253741;position:relative}.airframe__surface-track i{position:absolute;left:50%;top:-2px;width:1px;height:9px;background:#768b92}.airframe__surface-track b{position:absolute;top:-2px;width:3px;height:9px;background:var(--cyan);transform:translateX(-50%);transition:left .16s linear}
+.airframe__throttle-readout{display:grid;grid-template-columns:1fr auto;align-items:center;gap:7px}.airframe__throttle-readout>span{grid-column:1/-1}.airframe__throttle-readout>div{height:5px;background:#253741}.airframe__throttle-readout i{display:block;height:100%;background:var(--green);transition:width .2s linear}.airframe__throttle-readout>strong{font-size:10px}
+.airframe__surface-bar.is-missing,.airframe__throttle-readout.is-missing{opacity:.55}
+.airframe__note{margin:9px 0 0;color:var(--dim);font:8px/1.45 var(--mono)}
+.airframe--compact .airframe__stage{min-height:190px;grid-template-columns:minmax(0,1fr) 72px}.airframe--compact .airframe__model{width:min(210px,72%)}.airframe--compact .airframe__pitch-window{min-height:105px}.airframe--compact .airframe__readouts{grid-template-columns:repeat(2,minmax(0,1fr))}
+[data-theme='monochrome'] .airframe__orientation{background:radial-gradient(circle,#202020,#090909 68%)}
+[data-theme='monochrome'] .airframe__surface{fill:#f3f3f3;stroke:#fff}[data-theme='monochrome'] .airframe__surface--rudder{fill:#c9c9c9}
+[data-theme='military'] .airframe__orientation{background:radial-gradient(circle,rgba(141,163,90,.12),transparent 38%),linear-gradient(155deg,#10150d,#171c12)}
+[data-theme='military'] .airframe__wing,[data-theme='military'] .airframe__tailplane{fill:#536044;stroke:#acb98e}[data-theme='military'] .airframe__model{color:#a8b58c}
+@media(max-width:560px){.airframe__stage{grid-template-columns:minmax(0,1fr) 70px;min-height:220px}.airframe__model{width:min(220px,78%)}.airframe__readouts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.airframe__model,.airframe__compass g,.airframe__surface,.airframe__pitch-scale{transition:none}.airframe__thrust i{animation:none}}

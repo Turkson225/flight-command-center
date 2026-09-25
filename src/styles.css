@@ -216,3 +216,44 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(
 .simulation-dock.cloud-live{background:#15382e;border-color:#4c9471}
 .simulation-dock.cloud-live .sim-dot{background:#94dbaf}
 [data-theme='light'] .simulation-dock.cloud-live{background:#e5f5eb;border-color:#8abda0}
+
+/* Three cockpit-safe themes. All retain a dark field; monochrome increases
+   black/white separation, while military limits accents to olive and amber. */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.theme-picker{height:33px;display:flex;align-items:center;gap:6px;padding:0 7px;border:1px solid #314752;background:#132630;color:var(--cyan)}
+.theme-picker select{width:88px;border:0;outline:0;background:transparent;color:var(--text);font:9px var(--mono);letter-spacing:.04em;cursor:pointer}.theme-picker option{color:#f4f4f4;background:#111820}
+.pitch-focus{position:absolute;z-index:4;right:9px;top:12px;display:flex;flex-direction:column;align-items:flex-end;padding:7px 8px;background:#091720dc;border-right:2px solid var(--amber);box-shadow:0 5px 18px #0004;pointer-events:none}.pitch-focus span{color:#98acb4;font:7px var(--mono);letter-spacing:.14em}.pitch-focus strong{margin-top:2px;color:#fff5d9;font:19px var(--mono);font-weight:500;letter-spacing:-.06em}.pitch-focus small{margin-top:2px;color:var(--amber);font:7px var(--mono);letter-spacing:.08em}
+.analysis-jump{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:13px;padding:13px 15px;border:1px solid var(--border);background:linear-gradient(90deg,var(--panel-alt),var(--panel))}.analysis-jump span{display:block;color:var(--cyan);font:8px var(--mono);letter-spacing:.13em}.analysis-jump strong{display:block;color:var(--text);font-size:11px;margin-top:4px}.analysis-jump a{display:inline-flex;align-items:center;gap:6px;color:var(--cyan);font:9px var(--mono);white-space:nowrap}.analysis-jump a:hover{text-decoration:underline}
+.instrument-airframe-panel,.analysis-panel{margin-top:13px}.instrument-airframe-panel .airframe__stage{min-height:320px}.analysis-attitude-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:13px;margin-top:13px}.analysis-attitude-grid>.panel{min-width:0}.airframe-panel{padding-bottom:14px}.airframe-panel .panel-head{padding-bottom:9px}
+
+:root[data-theme='monochrome']{color-scheme:dark;color:#f3f3f3;background:#050505;--bg:#050505;--sidebar:#080808;--panel:#101010;--panel-alt:#151515;--border:#363636;--border-soft:#242424;--text:#f2f2f2;--muted:#a7a7a7;--dim:#737373;--cyan:#ffffff;--green:#d5d5d5;--amber:#f0f0f0;--red:#ff7f73}
+[data-theme='monochrome'] .app-shell{background:radial-gradient(circle at 72% -8%,#26262655,transparent 34%),var(--bg)}
+[data-theme='monochrome'] .sidebar{background:linear-gradient(180deg,#0e0e0e,#070707)}
+[data-theme='monochrome'] .topbar{background:#090909ed}
+[data-theme='monochrome'] .panel,[data-theme='monochrome'] .pfd{background:linear-gradient(165deg,#171717,#0d0d0d)}
+[data-theme='monochrome'] .nav-link.active{color:#fff;border-color:#555;background:#1d1d1d;box-shadow:inset 2px 0 #fff}
+[data-theme='monochrome'] .nav-link.active svg,[data-theme='monochrome'] .overline,[data-theme='monochrome'] .text-link,[data-theme='monochrome'] .analysis-jump span,[data-theme='monochrome'] .analysis-jump a{color:#fff}
+[data-theme='monochrome'] .source-banner.sim,[data-theme='monochrome'] .analysis-jump{background:linear-gradient(90deg,#1a1a1a,#0d0d0d);border-color:#474747}
+[data-theme='monochrome'] .source-banner.sim strong{color:#fff}[data-theme='monochrome'] .sim .banner-icon{color:#fff;border-color:#666}
+[data-theme='monochrome'] .theme-picker{background:#141414;border-color:#555}[data-theme='monochrome'] .global-state{background:#171717;border-color:#616161;color:#fff}
+[data-theme='monochrome'] .sky{background:linear-gradient(#303030,#575757)}[data-theme='monochrome'] .ground{background:linear-gradient(#4a4a4a,#202020)}
+[data-theme='monochrome'] .heading-indicator{background:#fff;color:#050505}[data-theme='monochrome'] .pitch-focus{border-color:#fff}
+
+:root[data-theme='military']{color-scheme:dark;color:#e5ead9;background:#11150e;--bg:#11150e;--sidebar:#151a11;--panel:#1a2016;--panel-alt:#20271b;--border:#3a4730;--border-soft:#2a3423;--text:#e5ead9;--muted:#98a489;--dim:#68745c;--cyan:#b3c48e;--green:#a9c986;--amber:#e0bd72;--red:#df8d76}
+[data-theme='military'] .app-shell{background:radial-gradient(circle at 72% -8%,rgba(124,145,73,.13),transparent 35%),var(--bg)}
+[data-theme='military'] .sidebar{background:linear-gradient(180deg,#1a2115,#11160f)}
+[data-theme='military'] .topbar{background:#12170fee;border-color:#2a3423}
+[data-theme='military'] .panel,[data-theme='military'] .pfd{background:linear-gradient(165deg,#20271b,#151b12)}
+[data-theme='military'] .brand-mark{border-color:#8d9f6d;color:#bdcd99}[data-theme='military'] .brand strong span{color:#bdcd99}
+[data-theme='military'] .nav-link:hover{background:#242d1d}[data-theme='military'] .nav-link.active{color:#eff2e7;border-color:#536442;background:#273120;box-shadow:inset 2px 0 #b3c48e}
+[data-theme='military'] .aircraft-name,[data-theme='military'] .source-readout{background:#1e2619;border-color:#3a4930}
+[data-theme='military'] .source-banner.sim,[data-theme='military'] .analysis-jump{background:linear-gradient(90deg,#252d1e,#171c14);border-color:#526141}
+[data-theme='military'] .source-banner.sim strong{color:#d8e4be}[data-theme='military'] .sim .banner-icon{color:#c5d49f;border-color:#70825a}
+[data-theme='military'] .theme-picker{background:#20281a;border-color:#526342}.theme-picker:focus-within{outline:2px solid var(--cyan);outline-offset:2px}
+[data-theme='military'] .pfd-side,[data-theme='military'] .pfd-heading{background:#171e14}[data-theme='military'] .horizon-frame{background:#1d2418}
+[data-theme='military'] .sky{background:linear-gradient(#344333,#607051)}[data-theme='military'] .ground{background:linear-gradient(#746746,#39392b)}
+[data-theme='military'] .heading-indicator{background:#d8dfc8;color:#20271b;box-shadow:0 0 0 3px #20271b}
+
+@media(max-width:1150px){.analysis-attitude-grid{grid-template-columns:1fr}.instrument-airframe-panel .airframe__stage{min-height:280px}}
+@media(max-width:760px){.theme-picker select{width:76px}.instrument-airframe-panel .airframe__stage{min-height:245px}.analysis-jump{align-items:flex-start}}
+@media(max-width:520px){.theme-picker{width:35px;padding:0;justify-content:center}.theme-picker select{position:absolute;width:35px;height:33px;opacity:0}.topbar-right{gap:7px}.pitch-focus{right:5px;top:8px;padding:5px 6px}.pitch-focus strong{font-size:15px}.analysis-jump{flex-direction:column}.analysis-attitude-grid{grid-template-columns:minmax(0,1fr)}}

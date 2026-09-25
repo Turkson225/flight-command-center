@@ -174,8 +174,18 @@
 }
 
 /* Only raster tiles are tinted. Markers and OSM's attribution retain contrast. */
-.fcc-nav-map[data-theme='dark'] .leaflet-tile-pane {
+.fcc-nav-map[data-theme='midnight'] .leaflet-tile-pane,
+.fcc-nav-map[data-theme='monochrome'] .leaflet-tile-pane,
+.fcc-nav-map[data-theme='military'] .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.78) contrast(1.08) saturate(0.82);
+}
+
+.fcc-nav-map[data-theme='monochrome'] .leaflet-tile-pane {
+  filter: invert(1) grayscale(1) brightness(.72) contrast(1.18);
+}
+
+.fcc-nav-map[data-theme='military'] .leaflet-tile-pane {
+  filter: invert(1) sepia(.28) hue-rotate(35deg) brightness(.66) contrast(1.12) saturate(.72);
 }
 
 .fcc-nav-map .leaflet-control-attribution {

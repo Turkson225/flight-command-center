@@ -104,7 +104,7 @@ function fitCenter(points: Coordinate[], fallback: Coordinate): Coordinate {
 export function NavigationMap({
   snapshot,
   history,
-  theme = 'dark',
+  theme = 'midnight',
   source,
   status,
   ageMs,
@@ -112,7 +112,7 @@ export function NavigationMap({
 }: {
   snapshot: AircraftTelemetry | null;
   history: AircraftTelemetry[];
-  theme?: 'dark' | 'light';
+  theme?: 'midnight' | 'monochrome' | 'military';
   source?: TelemetrySource;
   status: string;
   ageMs: number | null;
