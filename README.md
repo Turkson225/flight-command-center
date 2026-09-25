@@ -7,22 +7,28 @@
 
 Flight Command Center is a browser cockpit for a custom fixed-wing aircraft whose Arduino Nano handles RC and flight-critical control while an ESP32 is planned to aggregate sensor and Nano state. The dashboard supports a **labeled simulation** and a Firebase Realtime Database cloud reader that can be configured for authenticated telemetry. It is useful for evaluating navigation displays, alert behavior, status clarity, and responsive layout before hardware integration.
 
-> **Operational status:** The Firebase project, device credentials and aircraft hardware have not been connected or verified. The cloud reader and sign-in interface require your own Firebase setup; selecting Cloud cannot turn simulated values into live aircraft readings. There is no verified cloud ingestion, persistent flight recording or aircraft command path. Do not use these displays to operate an aircraft.
+> **Operational status:** The cloud reader and sign-in interface require a correctly provisioned Firebase project; selecting Cloud cannot turn simulated values into live aircraft readings. Hardware telemetry and the complete aircraft installation still require bench validation. Local browser flight recording is implemented, but there is no aircraft command path. Do not use these displays to operate an aircraft.
 
 ## Implemented milestone and roadmap
 
 | Capability | This milestone | Integration still required |
 | --- | --- | --- |
 | Cockpit | Responsive primary flight display and aircraft attitude view (roll, pitch and heading), status, navigation/trail, battery, alerts and sensor-health presentation | Calibration and independent validation against actual flight instruments |
-| Navigation map | Interactive OpenStreetMap basemap with aircraft, reported HOME, trail and local grid fallback | Verified live GPS transport and a production tile service for higher traffic |
-| Theme | Light and dark themes with a persistent operator preference | — |
+| Navigation map | Interactive OpenStreetMap basemap with aircraft, breadcrumb trail, reported HOME, home arrow, advisory geofence, return corridor and local grid fallback | Verified live GPS transport and a production tile service for higher traffic |
+| Theme and layout | Midnight, monochrome, black-and-white and military themes; retractable navigation; persistent theme and customizable secondary command panels | — |
 | Telemetry | Central typed state and a roughly 5 Hz deterministic simulation with selectable fault scenarios | ESP32 sensor drivers, UART decoding, calibrated sensor fusion and verified ingestion |
 | Data source | Explicit simulation and optional Firebase Realtime Database cloud reader with source and freshness labeling; direct LAN remains unavailable | Configure a Firebase project, deploy and test secure device ingestion, connect hardware, and bench-test freshness and faults |
 | Commands | Interface may show command/status concepts | Authorized, audited high-level commands with onboard acknowledgement and interlocks |
-| Auth and history | Firebase email/password sign-in interface for restricted cloud reads; recent browser samples remain in memory | Provision owner account and aircraft membership, deploy and test RTDB rules, add persistent flight recording, replay and analytics |
+| Auth and history | Firebase email/password sign-in for restricted cloud reads; IndexedDB flight recording, synchronized replay, event markers, summaries, control-response screening and CSV/JSON export | Provision and validate owner/device access; define an external backup/retention policy if recordings must move between browsers |
 | Hosting | Live GitHub Pages deployment from `main`, with Vite configured for `/flight-command-center/` | — |
 
 The simulator includes normal flight, GPS failure, low battery, telemetry loss, and failsafe exercises. Values in a fault state must remain labeled as **simulated**; missing or stale values are not evidence of a safe aircraft state.
+
+## Flight operations workspace
+
+The **Flight operations** page records full telemetry samples in browser IndexedDB and replays the map, attitude model, surface commands and pitch traces against one scrubber. Completed flights include an annotated event timeline, post-flight summary, command/response correlation and lag screening, oscillation reversal frequency, and CSV/JSON downloads. Recordings stay on the current browser profile and are not written to Firebase or synchronized between devices.
+
+Configurable pitch, bank, voltage, estimated battery, GPS, telemetry, failsafe and advisory-geofence rules run locally. The preflight checklist combines observable telemetry checks with explicit operator confirmations. These features support review and preparation; they do not enforce an aircraft flight envelope, verify mechanical condition, or determine airworthiness.
 
 The attitude view currently follows **simulated** roll, pitch and heading. For live telemetry, the ESP32 must fuse calibrated MPU9250 gyroscope and accelerometer readings for roll/pitch and use the tilt-compensated, hard/soft-iron-calibrated magnetometer to bound yaw drift and derive magnetic heading. Magnetic heading differs from GPS course over ground, especially at low speed, in wind or during a turn. Source timestamps and sensor quality must accompany the live values; an invalid or stale attitude must be clearly marked rather than presented as current.
 
@@ -103,4 +109,4 @@ Before any field use, complete the independent ground-test and failure-case chec
 1. Implement and bench-test the Nano UART publisher and ESP32 parser against the same vectors in [UART v1](docs/uart-protocol.md).
 2. Integrate calibrated sensors and actual source timestamps, with unavailable values represented as null and per-sensor health.
 3. Set up Firebase Auth and Realtime Database, provision aircraft membership, deploy the trusted HTTPS ingestion service, and test cross-aircraft read denial and device replay rejection.
-4. Connect the ESP32 publisher and verify real values, timing, sensor failures and disconnects on the bench before considering persistent recording, audit history or high-level command state.
+4. Connect the ESP32 publisher and verify real values, timing, sensor failures and disconnects on the bench; validate recordings and exported files against an independent reference before relying on post-flight analysis.

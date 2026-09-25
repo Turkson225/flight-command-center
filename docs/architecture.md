@@ -36,10 +36,11 @@ The aircraft attitude view should consume roll and pitch from the fused IMU solu
 
 - Target Nano state packet rate: 10 Hz during later bench validation; this is a design target rather than a verified rate.
 - Target visual updates: around 5–10 Hz when actual telemetry supports them; animation between packets does not create new measurements.
-- Historical samples: the browser retains a bounded chart buffer in memory; Firebase currently stores only the latest sample. Future flight recording needs a deliberate retention policy and independently verified storage.
+- Historical samples: the browser retains a bounded live chart buffer in memory. When the operator starts a recording, full typed samples and event markers are collected separately and a completed flight is saved to browser IndexedDB. Recordings are local to that browser profile, are not cloud backups, and need an external retention policy if they must survive device loss or be shared.
 - Use monotonic clock time for local packet age; source `uptime_ms` is not synchronized with browser, ESP32, or UTC clocks.
 - Device and backend should attach a trusted receipt timestamp. Capture GPS UTC where available, but do not use an unverified device clock as proof of freshness.
 - An alert needs state (`active`, `acknowledged`, `resolved`), severity, source, timestamps, and a testable threshold with hysteresis. Acknowledging a UI alert is not resolving an aircraft fault.
+- Current configurable warnings and preflight checks are browser-side advisory logic. They neither enforce limits onboard nor prove readiness. Automatic flight events are retained with local recordings; the backend does not yet provide an authoritative audit log.
 
 ## Navigation semantics
 

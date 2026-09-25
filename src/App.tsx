@@ -3,18 +3,58 @@ import { NavigationMap } from './components/NavigationMap'
 import { AircraftAttitude } from './components/AircraftAttitude'
 import { AirframeVisualizer } from './components/AirframeVisualizer'
 import { TelemetryAnalysis } from './components/TelemetryAnalysis'
+import { AlertConfiguration, FlightOperationsPage, PitchFocus } from './components/FlightOperations'
 import { FirebaseConnection } from './components/FirebaseConnection'
 import { useTelemetry } from './core/useTelemetry'
+import { useFlightOperations } from './core/useFlightOperations'
 import { useFirebaseSession } from './core/useFirebaseSession'
 import { isCurrentSensor, type AircraftTelemetry, type FlightAlert, type SimulationScenario, type TelemetrySource } from './core/telemetry'
 import './styles.css'
 
-type View = 'command' | 'navigation' | 'instruments' | 'analysis' | 'telemetry' | 'sensors' | 'alerts' | 'engineering'
+type View = 'command' | 'operations' | 'navigation' | 'instruments' | 'analysis' | 'telemetry' | 'sensors' | 'alerts' | 'engineering'
 type Theme = 'midnight' | 'monochrome' | 'blackwhite' | 'military'
 type IconName = 'grid' | 'map' | 'horizon' | 'chart' | 'wave' | 'chip' | 'alert' | 'tool' | 'expand' | 'chevron' | 'play' | 'pause' | 'reset' | 'copy' | 'arrow' | 'radio' | 'clock' | 'download' | 'menu' | 'close' | 'plane' | 'pin' | 'bolt' | 'palette'
 
 const THEME_STORAGE_KEY = 'flight-command-center-theme'
 const SIDEBAR_STORAGE_KEY = 'flight-command-center-sidebar-collapsed'
+const DASHBOARD_LAYOUT_STORAGE_KEY = 'flight-command-center-dashboard-layout-v1'
+
+type DashboardWidgetKey = 'power' | 'health' | 'airframe' | 'alerts' | 'timeline'
+type DashboardWidgetSize = 'single' | 'double' | 'full'
+type DashboardWidget = { key: DashboardWidgetKey; visible: boolean; size: DashboardWidgetSize }
+
+const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetKey, string> = {
+  power: 'Aircraft power',
+  health: 'Link & sensor health',
+  airframe: 'Attitude & control surfaces',
+  alerts: 'Active alerts',
+  timeline: 'Flight timeline',
+}
+
+const DEFAULT_DASHBOARD_LAYOUT: DashboardWidget[] = [
+  { key: 'power', visible: true, size: 'single' },
+  { key: 'health', visible: true, size: 'single' },
+  { key: 'airframe', visible: true, size: 'single' },
+  { key: 'alerts', visible: true, size: 'double' },
+  { key: 'timeline', visible: true, size: 'single' },
+]
+
+function savedDashboardLayout(): DashboardWidget[] {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_KEY) ?? '[]') as Partial<DashboardWidget>[]
+    const keys = new Set<DashboardWidgetKey>()
+    const valid = parsed.filter((item): item is DashboardWidget => {
+      const key = item.key as DashboardWidgetKey
+      const size = item.size as DashboardWidgetSize
+      const accepted = Object.prototype.hasOwnProperty.call(DASHBOARD_WIDGET_LABELS, key) && !keys.has(key) && typeof item.visible === 'boolean' && ['single', 'double', 'full'].includes(size)
+      if (accepted) keys.add(key)
+      return accepted
+    })
+    return [...valid, ...DEFAULT_DASHBOARD_LAYOUT.filter(item => !keys.has(item.key))]
+  } catch {
+    return DEFAULT_DASHBOARD_LAYOUT
+  }
+}
 
 function savedTheme(): Theme | null {
   try {
@@ -49,6 +89,7 @@ const THEMES: { key: Theme; label: string }[] = [
 
 const NAV: { key: View; label: string; icon: IconName; section: string }[] = [
   { key: 'command', label: 'Command center', icon: 'grid', section: 'OPERATIONS' },
+  { key: 'operations', label: 'Flight operations', icon: 'clock', section: 'OPERATIONS' },
   { key: 'navigation', label: 'Navigation', icon: 'map', section: 'OPERATIONS' },
   { key: 'instruments', label: 'Instruments', icon: 'horizon', section: 'OPERATIONS' },
   { key: 'analysis', label: 'Flight analysis', icon: 'chart', section: 'OPERATIONS' },
@@ -267,10 +308,10 @@ function Coordinates({ snapshot, history, status, ageMs, freshnessNow }: { snaps
   return <div className="coordinates"><div><span className="quiet-label">{!valid ? 'POSITION' : current ? 'CURRENT POSITION' : 'LAST KNOWN POSITION'}</span><strong>{valid ? `${lat.toFixed(6)}°, ${lon.toFixed(6)}°` : 'POSITION UNAVAILABLE'}</strong></div><button className="icon-button" aria-label="Copy displayed coordinates" title="Copy displayed coordinates" disabled={!valid} onClick={copy}><Icon name="copy" size={16}/></button>{copied && <span className="copied">COPIED</span>}</div>
 }
 
-function MapPanel({ snapshot, history, source, status, ageMs, freshnessNow, theme, large = false }: { snapshot: AircraftTelemetry | null; history: AircraftTelemetry[]; source: TelemetrySource; status: string; ageMs: number | null; freshnessNow: number; theme: Theme; large?: boolean }) {
+function MapPanel({ snapshot, history, source, status, ageMs, freshnessNow, theme, geofenceRadiusMeters = 500, large = false }: { snapshot: AircraftTelemetry | null; history: AircraftTelemetry[]; source: TelemetrySource; status: string; ageMs: number | null; freshnessNow: number; theme: Theme; geofenceRadiusMeters?: number; large?: boolean }) {
   const fresh = status === 'LIVE' || status === 'SIMULATION'
   return <Panel eyebrow="NAVIGATION / NEO-7 GPS" title="Position & ground track" right={<span className="mini-badge">{!fresh && snapshot ? 'LAST KNOWN' : !snapshot ? 'GPS UNKNOWN' : snapshot.navigation.gpsFix ? `${snapshot.navigation.satellites} SAT / FIX` : 'NO GPS FIX'}</span>} className={`map-panel ${large ? 'large' : ''}`}>
-    <div className="map-shell"><NavigationMap key={source} snapshot={snapshot} history={history} theme={theme} source={source} status={status} ageMs={ageMs} freshnessNow={freshnessNow}/></div>
+    <div className="map-shell"><NavigationMap key={source} snapshot={snapshot} history={history} theme={theme} source={source} status={status} ageMs={ageMs} freshnessNow={freshnessNow} geofenceRadiusMeters={geofenceRadiusMeters}/></div>
     <Coordinates snapshot={snapshot} history={history} status={status} ageMs={ageMs} freshnessNow={freshnessNow}/>
     <div className="map-facts"><div><span>HOME DISTANCE</span><strong>{num(snapshot?.navigation.distanceHome, 1)} <small>m</small></strong></div><div><span>BEARING HOME</span><strong>{bearing(snapshot?.navigation.bearingHome)}</strong></div><div><span>COURSE OVER GROUND</span><strong>{bearing(snapshot?.navigation.course)}</strong></div></div>
   </Panel>
@@ -282,7 +323,7 @@ function TracePanel({ history }: { history: AircraftTelemetry[] }) {
     <div><div className="trace-title"><span>BARO ALTITUDE</span><strong>{num(last?.navigation.barometricAltitude)} m</strong></div><Sparkline values={history.slice(-120).map(h => h.navigation.barometricAltitude)}/></div>
     <div><div className="trace-title"><span>GROUND SPEED</span><strong>{num(last?.navigation.groundSpeed)} km/h</strong></div><Sparkline values={history.slice(-120).map(h => h.navigation.groundSpeed)} color="#c7b583"/></div>
     <div><div className="trace-title"><span>BATTERY VOLTAGE</span><strong>{num(last?.power.batteryVoltage, 2)} V</strong></div><Sparkline values={history.slice(-120).map(h => h.power.batteryVoltage)} color="#91d0a9"/></div>
-  </div><p className="technical-note">Charts show samples in the current browser memory buffer. Persistent recording is not connected.</p></Panel>
+  </div><p className="technical-note">Charts show the recent live memory buffer. Use Flight operations to create a persistent local recording and synchronized replay.</p></Panel>
 }
 
 function SimulationPanel({ scenario, running, setScenario, start, pause, reset }: { scenario: SimulationScenario; running: boolean; setScenario: (v: SimulationScenario) => void; start: () => void; pause: () => void; reset: () => void }) {
@@ -302,6 +343,20 @@ function EventPanel({ alerts, snapshot, durationSec }: { alerts: FlightAlert[]; 
   </div></Panel>
 }
 
+function DashboardLayoutEditor({ layout, onMove, onToggle, onResize, onReset, onClose }: { layout: DashboardWidget[]; onMove: (index: number, direction: -1 | 1) => void; onToggle: (key: DashboardWidgetKey) => void; onResize: (key: DashboardWidgetKey) => void; onReset: () => void; onClose: () => void }) {
+  return <section className="dashboard-layout-editor" aria-label="Customize command center layout">
+    <div className="dashboard-layout-editor__head"><div><span>CUSTOM DASHBOARD</span><strong>Arrange, resize or hide secondary panels</strong></div><div><button className="button ghost small" onClick={onReset}>RESET</button><button className="icon-button" aria-label="Close layout editor" onClick={onClose}><Icon name="close" size={16}/></button></div></div>
+    <div className="dashboard-layout-editor__list">{layout.map((item, index) => <div key={item.key} className={!item.visible ? 'is-hidden' : ''}>
+      <span className="dashboard-layout-editor__handle">{String(index + 1).padStart(2, '0')}</span><strong>{DASHBOARD_WIDGET_LABELS[item.key]}</strong>
+      <button onClick={() => onMove(index, -1)} disabled={index === 0} aria-label={`Move ${DASHBOARD_WIDGET_LABELS[item.key]} earlier`}>↑</button>
+      <button onClick={() => onMove(index, 1)} disabled={index === layout.length - 1} aria-label={`Move ${DASHBOARD_WIDGET_LABELS[item.key]} later`}>↓</button>
+      <button onClick={() => onResize(item.key)}>{item.size.toUpperCase()}</button>
+      <button onClick={() => onToggle(item.key)}>{item.visible ? 'HIDE' : 'SHOW'}</button>
+    </div>)}</div>
+    <p>Primary flight display and navigation remain pinned so core flight context cannot be hidden accidentally.</p>
+  </section>
+}
+
 export default function App() {
   const firebase = useFirebaseSession()
   const telemetry = useTelemetry({ configured: firebase.configured, authLoading: firebase.authLoading, database: firebase.database, userId: firebase.user?.uid ?? null, aircraftId: firebase.aircraftId })
@@ -311,14 +366,21 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(savedSidebarCollapsed)
   const [utc, setUtc] = useState(new Date())
   const [theme, setTheme] = useState<Theme>(() => savedTheme() ?? systemTheme())
+  const [dashboardLayout, setDashboardLayout] = useState<DashboardWidget[]>(savedDashboardLayout)
+  const [layoutEditorOpen, setLayoutEditorOpen] = useState(false)
   const stateLabel = normalizedStatus(String(status), source, snapshot)
+  const flightOperations = useFlightOperations(snapshot, stateLabel, source)
+  const allAlerts = useMemo(() => {
+    const configuredTypes = new Set(flightOperations.configuredAlerts.map(alert => alert.type))
+    return [...flightOperations.configuredAlerts, ...alerts.filter(alert => !configuredTypes.has(alert.type))]
+  }, [flightOperations.configuredAlerts, alerts])
   const selectedView = NAV.find(item => item.key === view) ?? NAV[0]
   const sourceLabel = source === 'simulation' ? 'SIMULATION' : source === 'cloud' ? 'CLOUD' : source === 'direct' ? 'DIRECT' : 'OFFLINE'
   const cloudLive = source === 'cloud' && stateLabel === 'LIVE'
   const cloudHeadline = !firebase.configured ? 'FIREBASE SETUP REQUIRED' : firebase.authLoading ? 'CONNECTING TO FIREBASE' : !firebase.user ? 'FIREBASE SIGN-IN REQUIRED' : cloudLive ? 'CLOUD TELEMETRY LIVE' : cloudConnection === 'empty' ? 'AWAITING AIRCRAFT TELEMETRY' : 'CLOUD TELEMETRY UNAVAILABLE'
   const cloudDescription = !firebase.configured ? 'Create a Firebase project, configure Realtime Database and owner access, then redeploy with its public web settings.' : firebase.authLoading ? 'Checking Firebase sign-in.' : !firebase.user ? 'Sign in on the Telemetry page to read your authorized aircraft.' : snapshot && source === 'cloud' && (stateLabel === 'STALE' || stateLabel === 'LOST') ? `Last aircraft sample is ${ageText(ageMs)} old. Awaiting fresh telemetry.` : cloudMessage
   const mode = snapshot?.system.flightMode ?? '—'
-  const latestAlerts = alerts.length
+  const latestAlerts = allAlerts.length
 
   useEffect(() => { const onHash = () => { setView(getView()); setSidebarOpen(false) }; window.addEventListener('hashchange', onHash); return () => window.removeEventListener('hashchange', onHash) }, [])
   useEffect(() => { const timer = window.setInterval(() => setUtc(new Date()), 1000); return () => window.clearInterval(timer) }, [])
@@ -334,7 +396,20 @@ export default function App() {
   async function toggleFullscreen() { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen() } catch { /* unsupported browser */ } }
   function chooseTheme(next: Theme) { setTheme(next); try { window.localStorage.setItem(THEME_STORAGE_KEY, next) } catch { /* Theme remains available for this session. */ } }
   function toggleSidebar() { setSidebarCollapsed(current => { const next = !current; try { window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next)) } catch { /* Layout remains available for this session. */ } return next }) }
+  function saveDashboardLayout(next: DashboardWidget[]) { setDashboardLayout(next); try { window.localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_KEY, JSON.stringify(next)) } catch { /* Layout remains available for this session. */ } }
+  function moveDashboardWidget(index: number, direction: -1 | 1) { const target = index + direction; if (target < 0 || target >= dashboardLayout.length) return; const next = [...dashboardLayout]; [next[index], next[target]] = [next[target], next[index]]; saveDashboardLayout(next) }
+  function toggleDashboardWidget(key: DashboardWidgetKey) { saveDashboardLayout(dashboardLayout.map(item => item.key === key ? { ...item, visible: !item.visible } : item)) }
+  function resizeDashboardWidget(key: DashboardWidgetKey) { const sizes: DashboardWidgetSize[] = ['single', 'double', 'full']; saveDashboardLayout(dashboardLayout.map(item => item.key === key ? { ...item, size: sizes[(sizes.indexOf(item.size) + 1) % sizes.length] } : item)) }
   function exportBuffer() { const blob = new Blob([JSON.stringify({ source, exportedAt: new Date().toISOString(), limitation: 'Current in-memory telemetry buffer only; not a flight recording.', samples: history }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'fd-x1-telemetry-buffer.json'; link.click(); URL.revokeObjectURL(url) }
+
+  function dashboardWidget(item: DashboardWidget) {
+    const content = item.key === 'power' ? <PowerPanel snapshot={snapshot} history={liveValues}/>
+      : item.key === 'health' ? <HealthPanel snapshot={snapshot} status={stateLabel} ageMs={ageMs}/>
+        : item.key === 'airframe' ? <ControlPanel snapshot={snapshot} status={stateLabel} compact/>
+          : item.key === 'alerts' ? <Panel eyebrow="04 / ACTIVE CONDITIONS" title="Alerts" right={<a href="#/alerts" className="text-link">VIEW ALL <Icon name="arrow" size={13}/></a>}><AlertList alerts={allAlerts} status={stateLabel} source={source} compact/></Panel>
+            : <EventPanel alerts={allAlerts} snapshot={snapshot} durationSec={durationSec}/>
+    return <div className={`dashboard-widget dashboard-widget--${item.size}`} key={item.key}>{content}</div>
+  }
 
   return <div className="app-shell">
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}>
@@ -342,13 +417,13 @@ export default function App() {
       <button className="sidebar-collapse icon-button" type="button" aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!sidebarCollapsed} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={toggleSidebar}><Icon name="chevron" size={15}/></button>
       <div className="sidebar-context"><div className="side-rule"/><span className="eyebrow">AIRCRAFT SELECTED</span><div className="aircraft-name"><span className="aircraft-monogram">01</span><div><strong>FD-X1</strong><small>{snapshot?.aircraftId ?? 'Fixed-wing platform'}</small></div><Icon name="chevron" size={14}/></div></div>
       <nav aria-label="Primary navigation">{NAV.map((item, i) => <div key={item.key}>{(i === 0 || NAV[i - 1].section !== item.section) && <div className="nav-section">{item.section}</div>}<a href={`#/${item.key}`} className={`nav-link ${view === item.key ? 'active' : ''}`} aria-current={view === item.key ? 'page' : undefined} title={sidebarCollapsed ? item.label : undefined}><Icon name={item.icon} size={18}/><span>{item.label}</span>{item.key === 'alerts' && latestAlerts > 0 && <b>{latestAlerts}</b>}</a></div>)}</nav>
-      <div className="sidebar-bottom"><div className="source-readout"><span className="eyebrow">TELEMETRY SOURCE</span><div><i className={`status-lamp ${stateLabel === 'SIMULATION' || stateLabel === 'LIVE' ? 'good' : stateLabel === 'STALE' || stateLabel === 'LOST' ? 'warn' : 'unknown'}`}/><strong>{sourceLabel}</strong><span>{stateLabel}</span></div></div><div className="sidebar-version"><span>FD-X COMMAND SYSTEM</span><b>v0.4.0 / PROTOTYPE</b></div></div>
+      <div className="sidebar-bottom"><div className="source-readout"><span className="eyebrow">TELEMETRY SOURCE</span><div><i className={`status-lamp ${stateLabel === 'SIMULATION' || stateLabel === 'LIVE' ? 'good' : stateLabel === 'STALE' || stateLabel === 'LOST' ? 'warn' : 'unknown'}`}/><strong>{sourceLabel}</strong><span>{stateLabel}</span></div></div><div className="sidebar-version"><span>FD-X COMMAND SYSTEM</span><b>v0.5.0 / PROTOTYPE</b></div></div>
     </aside>
     {sidebarOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={() => setSidebarOpen(false)}/>}
 
     <div className="main-shell"><header className="topbar"><div className="topbar-left"><button className="mobile-menu icon-button" aria-label="Open navigation" onClick={() => setSidebarOpen(true)}><Icon name="menu"/></button><div className="breadcrumb">OPERATIONS <span>/</span> <strong>{selectedView.label.toUpperCase()}</strong></div></div><div className="topbar-status"><div className={`global-state ${stateLabel.toLowerCase()}`}><i className="dot"/>{stateLabel === 'LOST' ? 'TELEMETRY LOST' : stateLabel}</div><div className="top-data"><span>MODE</span><b>{mode}</b></div><div className="top-data"><span>GPS</span><b>{snapshot ? stateLabel === 'STALE' || stateLabel === 'LOST' ? 'LAST KNOWN' : snapshot.navigation.gpsFix ? `${snapshot.navigation.satellites} SAT` : 'NO FIX' : '—'}</b></div><div className="top-data"><span>BATTERY</span><b>{num(snapshot?.power.batteryVoltage, 2)} V</b></div></div><div className="topbar-right"><div className="utc-clock"><span>UTC</span><strong>{utc.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour12: false })}</strong></div><label className="theme-picker" title="Dashboard color theme"><Icon name="palette" size={16}/><span className="sr-only">Dashboard theme</span><select value={theme} onChange={event => chooseTheme(event.target.value as Theme)} aria-label="Dashboard theme">{THEMES.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}</select></label><button className="icon-button fullscreen-button" aria-label="Toggle fullscreen" title="Fullscreen (F)" onClick={() => void toggleFullscreen()}><Icon name="expand" size={17}/></button><div className="operator" title="Local operator view">ET</div></div></header>
 
-      <div className="content"><div className="page-title-row"><div><div className="overline"><span className="overline-line"/> FLIGHT NAVIGATION & MISSION INTELLIGENCE</div><h1>{view === 'command' ? 'Command Center' : selectedView.label}</h1><p>{view === 'command' ? 'A single view of aircraft attitude, navigation and systems.' : view === 'navigation' ? 'Position, ground track and GPS quality.' : view === 'instruments' ? 'Flight attitude, pitch and animated control surfaces.' : view === 'analysis' ? 'Inspect recent attitude, vertical profile, power and control activity.' : view === 'telemetry' ? 'Inspect packet freshness and recent local telemetry.' : view === 'sensors' ? 'Assess sensor availability and data integrity.' : view === 'alerts' ? 'Review active conditions and recent events.' : 'Inspect controller state and simulation behavior.'}</p></div><div className="session-clock"><span>SESSION ELAPSED</span><strong>{duration(durationSec)}</strong><small>{sourceLabel} / LOCAL SESSION</small></div></div>
+      <div className="content"><div className="page-title-row"><div><div className="overline"><span className="overline-line"/> FLIGHT NAVIGATION & MISSION INTELLIGENCE</div><h1>{view === 'command' ? 'Command Center' : selectedView.label}</h1><p>{view === 'command' ? 'A single view of aircraft attitude, navigation and systems.' : view === 'operations' ? 'Record, replay, review and export synchronized flight data.' : view === 'navigation' ? 'Position, ground track, geofence and return-to-home reference.' : view === 'instruments' ? 'Flight attitude, focused pitch and animated control surfaces.' : view === 'analysis' ? 'Inspect recent attitude, vertical profile, power and control activity.' : view === 'telemetry' ? 'Inspect packet freshness and recent local telemetry.' : view === 'sensors' ? 'Assess sensor availability and data integrity.' : view === 'alerts' ? 'Review configurable conditions and recent events.' : 'Inspect controller state and simulation behavior.'}</p></div><div className="session-clock"><span>SESSION ELAPSED</span><strong>{duration(durationSec)}</strong><small>{sourceLabel} / LOCAL SESSION</small></div></div>
 
       <div className={`source-banner ${source === 'simulation' ? 'sim' : ''}`}>
         <div className="source-banner-left"><span className="banner-icon"><Icon name={source === 'simulation' ? 'horizon' : 'radio'} size={18}/></span><div>
@@ -360,11 +435,13 @@ export default function App() {
 
       {(stateLabel === 'STALE' || stateLabel === 'LOST') && snapshot && <div className="stale-banner"><Icon name="alert" size={17}/><strong>{stateLabel === 'STALE' ? 'TELEMETRY STALE' : 'TELEMETRY LOST'}</strong><span>Holding last received values · Last packet {ageText(ageMs)}. Measurements may no longer describe the aircraft.</span></div>}
 
-      {view === 'command' && <><div className="hero-grid"><PrimaryFlightDisplay snapshot={snapshot} status={stateLabel}/><MapPanel snapshot={snapshot} history={liveValues} source={source} status={stateLabel} ageMs={ageMs} freshnessNow={freshnessNow} theme={theme}/></div><DataStrip snapshot={snapshot} status={stateLabel}/><div className="lower-grid"><PowerPanel snapshot={snapshot} history={liveValues}/><HealthPanel snapshot={snapshot} status={stateLabel} ageMs={ageMs}/><ControlPanel snapshot={snapshot} status={stateLabel} compact/></div><div className="analysis-jump"><div><span>FLIGHT DATA ANALYSIS</span><strong>Pitch, roll, altitude, power and control activity</strong></div><a href="#/analysis">OPEN ANALYSIS <Icon name="arrow" size={13}/></a></div><div className="bottom-grid"><Panel eyebrow="04 / ACTIVE CONDITIONS" title="Alerts" right={<a href="#/alerts" className="text-link">VIEW ALL <Icon name="arrow" size={13}/></a>}><AlertList alerts={alerts} status={stateLabel} source={source} compact/></Panel><EventPanel alerts={alerts} snapshot={snapshot} durationSec={durationSec}/></div></>}
+      {view === 'command' && <><div className="command-layout-actions"><button className="button ghost small" onClick={() => setLayoutEditorOpen(value => !value)}><Icon name="grid" size={14}/>{layoutEditorOpen ? 'CLOSE LAYOUT' : 'CUSTOMIZE LAYOUT'}</button><span>{dashboardLayout.filter(item => item.visible).length} OF {dashboardLayout.length} SECONDARY PANELS SHOWN</span></div>{layoutEditorOpen && <DashboardLayoutEditor layout={dashboardLayout} onMove={moveDashboardWidget} onToggle={toggleDashboardWidget} onResize={resizeDashboardWidget} onReset={() => saveDashboardLayout(DEFAULT_DASHBOARD_LAYOUT)} onClose={() => setLayoutEditorOpen(false)}/>}<div className="hero-grid"><PrimaryFlightDisplay snapshot={snapshot} status={stateLabel}/><MapPanel snapshot={snapshot} history={liveValues} source={source} status={stateLabel} ageMs={ageMs} freshnessNow={freshnessNow} theme={theme} geofenceRadiusMeters={flightOperations.settings.geofenceRadiusM}/></div><DataStrip snapshot={snapshot} status={stateLabel}/><div className="dashboard-widget-grid">{dashboardLayout.filter(item => item.visible).map(dashboardWidget)}</div><div className="analysis-jump"><div><span>FLIGHT OPERATIONS</span><strong>Record, replay, analyze and export complete flights</strong></div><a href="#/operations">OPEN OPERATIONS <Icon name="arrow" size={13}/></a></div></>}
 
-      {view === 'navigation' && <><div className="navigation-grid"><MapPanel snapshot={snapshot} history={liveValues} source={source} status={stateLabel} ageMs={ageMs} freshnessNow={freshnessNow} theme={theme} large/><Panel eyebrow="GPS / POSITION SOLUTION" title="Navigation detail"><div className="detail-list"><Metric label="LATITUDE" value={snapshot?.navigation.gpsFix ? num(snapshot.navigation.latitude, 6) : '—'} unit="°"/><Metric label="LONGITUDE" value={snapshot?.navigation.gpsFix ? num(snapshot.navigation.longitude, 6) : '—'} unit="°"/><Metric label="GPS ALTITUDE" value={num(snapshot?.navigation.gpsAltitude)} unit="m"/><Metric label="GROUND SPEED" value={num(snapshot?.navigation.groundSpeed)} unit="km/h"/><Metric label="HDOP" value={num(snapshot?.navigation.hdop)} hint="Reported when available"/><Metric label="SATELLITES" value={snapshot ? String(snapshot.navigation.satellites) : '—'}/></div><p className="technical-note">Home distance and bearing are shown only when a valid home position is available in telemetry. No waypoint control is exposed.</p></Panel></div><TracePanel history={liveValues}/></>}
+      {view === 'operations' && <FlightOperationsPage snapshot={snapshot} history={history} status={stateLabel} theme={theme} operations={flightOperations}/>} 
 
-      {view === 'instruments' && <><div className="instruments-grid"><PrimaryFlightDisplay snapshot={snapshot} status={stateLabel}/><div className="instrument-stack"><Panel eyebrow="ATTITUDE / MPU9250" title="Aircraft attitude" className="aircraft-attitude-panel"><AircraftAttitude roll={snapshot?.attitude.roll} pitch={snapshot?.attitude.pitch} heading={snapshot?.attitude.heading} imu={snapshot?.sensors.imu} magnetometer={snapshot?.sensors.magnetometer} sampleTimestamp={snapshot?.timestamp ?? null} status={stateLabel} source={source}/></Panel><Panel eyebrow="ALTIMETRY / INDEPENDENT SOURCES" title="Altitude & vertical motion"><div className="instrument-triplet"><Metric label="BARO ALT / BMP180" value={num(snapshot?.navigation.barometricAltitude)} unit="m"/><Metric label="GPS ALT / NEO-7" value={num(snapshot?.navigation.gpsAltitude)} unit="m"/><Metric label="VERTICAL SPEED" value={signed(snapshot?.environment.verticalSpeed)} unit="m/s"/></div></Panel><PowerPanel snapshot={snapshot} history={liveValues}/></div></div><Panel eyebrow="AIRFRAME / ATTITUDE + NANO COMMANDS" title="Live aircraft orientation" right={<span className="mini-badge">ANIMATED VIEW</span>} className="instrument-airframe-panel"><AirframeVisualizer snapshot={snapshot} status={stateLabel}/></Panel></>}
+      {view === 'navigation' && <><div className="navigation-grid"><MapPanel snapshot={snapshot} history={liveValues} source={source} status={stateLabel} ageMs={ageMs} freshnessNow={freshnessNow} theme={theme} geofenceRadiusMeters={flightOperations.settings.geofenceRadiusM} large/><Panel eyebrow="GPS / POSITION SOLUTION" title="Navigation detail"><div className="detail-list"><Metric label="LATITUDE" value={snapshot?.navigation.gpsFix ? num(snapshot.navigation.latitude, 6) : '—'} unit="°"/><Metric label="LONGITUDE" value={snapshot?.navigation.gpsFix ? num(snapshot.navigation.longitude, 6) : '—'} unit="°"/><Metric label="GPS ALTITUDE" value={num(snapshot?.navigation.gpsAltitude)} unit="m"/><Metric label="GROUND SPEED" value={num(snapshot?.navigation.groundSpeed)} unit="km/h"/><Metric label="HDOP" value={num(snapshot?.navigation.hdop)} hint="Reported when available"/><Metric label="SATELLITES" value={snapshot ? String(snapshot.navigation.satellites) : '—'}/></div><p className="technical-note">The geofence, home arrow and return corridor are advisory overlays. No waypoint or return command is exposed.</p></Panel></div><TracePanel history={liveValues}/></>}
+
+      {view === 'instruments' && <><PitchFocus snapshot={snapshot} history={liveValues} status={stateLabel}/><div className="instruments-grid"><PrimaryFlightDisplay snapshot={snapshot} status={stateLabel}/><div className="instrument-stack"><Panel eyebrow="ATTITUDE / MPU9250" title="Aircraft attitude" className="aircraft-attitude-panel"><AircraftAttitude roll={snapshot?.attitude.roll} pitch={snapshot?.attitude.pitch} heading={snapshot?.attitude.heading} imu={snapshot?.sensors.imu} magnetometer={snapshot?.sensors.magnetometer} sampleTimestamp={snapshot?.timestamp ?? null} status={stateLabel} source={source}/></Panel><Panel eyebrow="ALTIMETRY / INDEPENDENT SOURCES" title="Altitude & vertical motion"><div className="instrument-triplet"><Metric label="BARO ALT / BMP180" value={num(snapshot?.navigation.barometricAltitude)} unit="m"/><Metric label="GPS ALT / NEO-7" value={num(snapshot?.navigation.gpsAltitude)} unit="m"/><Metric label="VERTICAL SPEED" value={signed(snapshot?.environment.verticalSpeed)} unit="m/s"/></div></Panel><PowerPanel snapshot={snapshot} history={liveValues}/></div></div><Panel eyebrow="AIRFRAME / ATTITUDE + NANO COMMANDS" title="Live aircraft orientation" right={<span className="mini-badge">ANIMATED VIEW</span>} className="instrument-airframe-panel"><AirframeVisualizer snapshot={snapshot} status={stateLabel}/></Panel></>}
 
       {view === 'analysis' && <><Panel eyebrow="RECENT BUFFER / DESCRIPTIVE ANALYSIS" title="Flight data analysis" right={<span className="mini-badge">{liveValues.length} SAMPLES</span>} className="analysis-panel"><TelemetryAnalysis history={liveValues} status={stateLabel}/></Panel><div className="analysis-attitude-grid"><Panel eyebrow="AIRFRAME / CURRENT SAMPLE" title="Attitude & surface state" right={<span className="mini-badge">LIVE MODEL</span>}><AirframeVisualizer snapshot={snapshot} status={stateLabel}/></Panel><Panel eyebrow="PITCH / MPU9250" title="Pitch detail"><AircraftAttitude roll={snapshot?.attitude.roll} pitch={snapshot?.attitude.pitch} heading={snapshot?.attitude.heading} imu={snapshot?.sensors.imu} magnetometer={snapshot?.sensors.magnetometer} sampleTimestamp={snapshot?.timestamp ?? null} status={stateLabel} source={source}/></Panel></div></>}
 
@@ -372,7 +449,7 @@ export default function App() {
 
       {view === 'sensors' && <><div className="systems-grid"><HealthPanel snapshot={snapshot} status={stateLabel} ageMs={ageMs}/><Panel eyebrow="SENSOR INVENTORY" title="Installed hardware"><div className="inventory-list"><div><Icon name="horizon"/><span><strong>MPU9250</strong><small>Attitude / fused roll, pitch, heading</small></span><b>{!snapshot ? 'UNKNOWN' : stateLabel === 'STALE' || stateLabel === 'LOST' ? 'STALE' : snapshot.attitude.roll != null ? 'DATA' : 'NO DATA'}</b></div><div><Icon name="pin"/><span><strong>NEO-7 GPS</strong><small>Position / ground speed / GPS altitude</small></span><b>{!snapshot ? 'UNKNOWN' : stateLabel === 'STALE' || stateLabel === 'LOST' ? 'STALE' : snapshot.navigation.gpsFix ? 'FIX' : 'NO FIX'}</b></div><div><Icon name="wave"/><span><strong>BMP180</strong><small>Pressure / barometric altitude / temperature</small></span><b>{!snapshot ? 'UNKNOWN' : stateLabel === 'STALE' || stateLabel === 'LOST' ? 'STALE' : snapshot.environment.pressure != null ? 'DATA' : 'NO DATA'}</b></div><div><Icon name="bolt"/><span><strong>Voltage sensor</strong><small>Aircraft battery / estimate</small></span><b>{!snapshot ? 'UNKNOWN' : stateLabel === 'STALE' || stateLabel === 'LOST' ? 'STALE' : snapshot.power.batteryVoltage != null ? 'DATA' : 'NO DATA'}</b></div></div></Panel></div><Panel eyebrow="RAW SENSOR MEASUREMENTS" title="Environment & motion"><div className="data-strip four"><Metric label="PRESSURE" value={num(snapshot?.environment.pressure)} unit="hPa"/><Metric label="TEMPERATURE" value={num(snapshot?.environment.temperature)} unit="°C"/><Metric label="GYRO X" value={signed(snapshot?.attitude.gyroX)} unit="°/s"/><Metric label="GYRO Y" value={signed(snapshot?.attitude.gyroY)} unit="°/s"/></div></Panel></>}
 
-      {view === 'alerts' && <div className="systems-grid alerts-view"><Panel eyebrow="ACTIVE / OPERATOR ATTENTION" title="System alerts" right={<span className="mini-badge">{alerts.length} EVENTS</span>}><AlertList alerts={alerts} status={stateLabel} source={source}/><p className="technical-note">Alerts in this prototype are local to the current data source. Persistent acknowledgement and audit logs require the backend.</p></Panel><EventPanel alerts={alerts} snapshot={snapshot} durationSec={durationSec}/></div>}
+      {view === 'alerts' && <><div className="systems-grid alerts-view"><Panel eyebrow="ACTIVE / OPERATOR ATTENTION" title="System alerts" right={<span className="mini-badge">{allAlerts.length} EVENTS</span>}><AlertList alerts={allAlerts} status={stateLabel} source={source}/><p className="technical-note">Configured warnings run locally. Recording captures alert transitions as replayable event markers.</p></Panel><EventPanel alerts={allAlerts} snapshot={snapshot} durationSec={durationSec}/></div><AlertConfiguration settings={flightOperations.settings} onChange={flightOperations.updateSettings} activeAlerts={flightOperations.configuredAlerts}/></>}
 
       {view === 'engineering' && <div className="systems-grid engineering-grid"><SimulationPanel scenario={scenario} running={running} setScenario={(next) => { if (source !== 'simulation') selectSource('simulation'); setScenario(next) }} start={() => { if (source !== 'simulation') selectSource('simulation'); start() }} pause={pause} reset={reset}/><div className="engineering-side"><ControlPanel snapshot={snapshot} status={stateLabel}/><Panel eyebrow="ARCHITECTURE / FLIGHT SAFETY" title="Control boundary"><div className="architecture-flow"><div><strong>RC receiver</strong><span>Operator input</span></div><i/><div><strong>Arduino Nano</strong><span>Time critical control</span></div><i/><div><strong>ESP32</strong><span>Sensor + UART gateway</span></div><i/><div><strong>Command Center</strong><span>Monitoring interface</span></div></div><p className="technical-note">The browser has no active flight control path. Nano control and failsafe logic must operate independently of Wi-Fi, cloud services and this dashboard.</p></Panel></div></div>}
 

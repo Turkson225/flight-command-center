@@ -21,6 +21,8 @@ This project is a development dashboard for a fixed-wing UAV. The public install
 | Battery unavailable | NO DATA, never 0 V or a reassuring percentage |
 | Simulated data | Persistent SIMULATION label through displays, alerts, exports and recordings |
 
+Browser alert thresholds, the advisory geofence, control-response ratings, and the preflight checklist are decision aids only. They do not constrain the Nano, command return-to-home, diagnose aerodynamic stability, or certify that launch is safe. CSV/JSON exports and local IndexedDB recordings must be compared with an independent reference before they are used for engineering conclusions.
+
 Freshness thresholds must be chosen from measured link rate and tested. In the proposed UART v1 contract, flag a state sample stale after 1 second since receipt and link offline after 3 seconds. An aircraft command should never be marked successful on click or network enqueue; it needs an onboard applied ACK and corroborating telemetry. An ACK timeout means **unknown outcome**, not proof that a command was not executed.
 
 ## High-level command release gate

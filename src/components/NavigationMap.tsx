@@ -13,6 +13,8 @@ type MapLayers = {
   reference: L.Marker;
   trail: L.Polyline;
   homeLine: L.Polyline;
+  returnCorridor: L.Polyline;
+  geofence: L.Circle;
 };
 
 const MAP_ZOOM = 16;
@@ -109,6 +111,7 @@ export function NavigationMap({
   status,
   ageMs,
   freshnessNow,
+  geofenceRadiusMeters = 500,
 }: {
   snapshot: AircraftTelemetry | null;
   history: AircraftTelemetry[];
@@ -117,6 +120,7 @@ export function NavigationMap({
   status: string;
   ageMs: number | null;
   freshnessNow: number;
+  geofenceRadiusMeters?: number;
 }) {
   const mapRef = useRef<HTMLElement>(null);
   const leafletContainerRef = useRef<HTMLDivElement>(null);
@@ -129,6 +133,7 @@ export function NavigationMap({
   const [localReference, setLocalReference] = useState<Coordinate | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('follow');
   const [showTrail, setShowTrail] = useState(true);
+  const [showGeofence, setShowGeofence] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [copyStatus, setCopyStatus] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -239,6 +244,7 @@ export function NavigationMap({
   const referencePoint = displayReference ? project(displayReference) : null;
   const routePoints = visiblePoints.map(project).map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
   const homeVector = position && deviceHome ? distanceAndBearing(position, deviceHome) : null;
+  const geofencePixels = geofenceRadiusMeters / metresPerPixel;
   const heading = snapshot?.attitude?.heading ?? snapshot?.navigation?.course;
   const safeHeading = typeof heading === 'number' && Number.isFinite(heading) ? heading : 0;
   const gridX = Array.from({ length: 7 }, (_, index) => 125 + index * 125);
@@ -270,6 +276,8 @@ export function NavigationMap({
       reference: L.marker([initial.latitude, initial.longitude], { icon: icon('reference') }),
       trail: L.polyline([], { color: '#36d4eb', weight: 3, opacity: 0.86, interactive: false }).addTo(map),
       homeLine: L.polyline([], { color: '#e6ae61', weight: 2, opacity: 0.9, dashArray: '6 6', interactive: false }).addTo(map),
+      returnCorridor: L.polyline([], { color: '#e6ae61', weight: 14, opacity: 0.14, interactive: false }).addTo(map),
+      geofence: L.circle([initial.latitude, initial.longitude], { radius: geofenceRadiusMeters, color: '#e6ae61', weight: 2, opacity: 0.85, dashArray: '8 7', fillColor: '#e6ae61', fillOpacity: 0.045, interactive: false }),
     };
     leafletLayersRef.current = layers;
     map.on('dragstart', () => setViewMode('manual'));
@@ -367,16 +375,22 @@ export function NavigationMap({
       layers.home.setLatLng([deviceHome.latitude, deviceHome.longitude]);
       if (!map.hasLayer(layers.home)) layers.home.addTo(map);
       layers.homeLine.setLatLngs([[position.latitude, position.longitude], [deviceHome.latitude, deviceHome.longitude]]);
+      layers.returnCorridor.setLatLngs([[position.latitude, position.longitude], [deviceHome.latitude, deviceHome.longitude]]);
+      layers.geofence.setLatLng([deviceHome.latitude, deviceHome.longitude]).setRadius(geofenceRadiusMeters);
+      if (showGeofence && !map.hasLayer(layers.geofence)) layers.geofence.addTo(map);
+      if (!showGeofence) layers.geofence.remove();
     } else {
       layers.home.remove();
       layers.homeLine.setLatLngs([]);
+      layers.returnCorridor.setLatLngs([]);
+      layers.geofence.remove();
     }
     if (displayReference) {
       layers.reference.setLatLng([displayReference.latitude, displayReference.longitude]);
       if (!map.hasLayer(layers.reference)) layers.reference.addTo(map);
     } else layers.reference.remove();
     layers.trail.setLatLngs(showTrail ? trail.map((sample) => [sample.latitude, sample.longitude] as L.LatLngTuple) : []);
-  }, [position?.latitude, position?.longitude, position?.timestamp, hasFix, safeHeading, deviceHome?.latitude, deviceHome?.longitude, displayReference?.latitude, displayReference?.longitude, showTrail, trail]);
+  }, [position?.latitude, position?.longitude, position?.timestamp, hasFix, safeHeading, deviceHome?.latitude, deviceHome?.longitude, displayReference?.latitude, displayReference?.longitude, showTrail, showGeofence, geofenceRadiusMeters, trail]);
 
   useEffect(() => {
     const map = leafletMapRef.current;
@@ -471,7 +485,10 @@ export function NavigationMap({
           </g>}
           <g clipPath="url(#fcc-map-bounds)">
             {routePoints && showTrail && <polyline className="fcc-nav-map__trail" points={routePoints} />}
+            {homePoint && showGeofence && <circle className="fcc-nav-map__geofence" cx={homePoint.x} cy={homePoint.y} r={geofencePixels}/>} 
+            {homePoint && aircraftPoint && <line className="fcc-nav-map__return-corridor" x1={homePoint.x} y1={homePoint.y} x2={aircraftPoint.x} y2={aircraftPoint.y} />}
             {homePoint && aircraftPoint && <line className="fcc-nav-map__home-line" x1={homePoint.x} y1={homePoint.y} x2={aircraftPoint.x} y2={aircraftPoint.y} />}
+            {homePoint && aircraftPoint && homeVector && <g className="fcc-nav-map__home-arrow" transform={`translate(${(homePoint.x + aircraftPoint.x) / 2} ${(homePoint.y + aircraftPoint.y) / 2}) rotate(${homeVector.bearing})`}><path d="M 0 -12 L 8 8 L 0 4 L -8 8 Z"/></g>}
             {homePoint && <g transform={`translate(${homePoint.x} ${homePoint.y})`}>
               <circle className="fcc-nav-map__home-ring" r="22" />
               <circle className="fcc-nav-map__home-core" r="13" />
@@ -512,6 +529,7 @@ export function NavigationMap({
         {displayReference && <button type="button" className={viewMode === 'reference' ? 'is-active' : ''} onClick={() => selectView('reference')}>CENTER LOCAL REF</button>}
         <button type="button" className={viewMode === 'fit' ? 'is-active' : ''} onClick={() => selectView('fit')} disabled={!position}>FIT TRAIL</button>
         <button type="button" className={showTrail ? 'is-active' : ''} onClick={() => setShowTrail((shown) => !shown)} aria-pressed={showTrail}>{showTrail ? 'TRAIL ON' : 'TRAIL OFF'}</button>
+        <button type="button" className={showGeofence ? 'is-active' : ''} onClick={() => setShowGeofence((shown) => !shown)} aria-pressed={showGeofence} disabled={!deviceHome}>{showGeofence ? 'GEOFENCE ON' : 'GEOFENCE OFF'}</button>
         <button type="button" onClick={() => { if (livePosition) setLocalReference(livePosition); }} disabled={!livePosition}>{displayReference ? 'MOVE LOCAL REF HERE' : 'SET LOCAL REF HERE'}</button>
         {displayReference && <button type="button" onClick={() => { setLocalReference(null); if (viewMode === 'reference') setViewMode('follow'); }}>CLEAR LOCAL REF</button>}
         <span className="fcc-nav-map__toolbar-spacer" />
@@ -527,7 +545,7 @@ export function NavigationMap({
         <div className="fcc-nav-map__datum fcc-nav-map__datum--home">
           <span>AIRCRAFT HOME {deviceHome ? '· REPORTED' : '· NOT REPORTED'}</span>
           <strong>{hasFix && homeVector ? `${formatDistance(homeVector.metres)} · ${Math.round(homeVector.bearing)}°` : '—'}</strong>
-          {displayReference && <small>Local reference is browser only</small>}
+          <small>{deviceHome ? `${formatDistance(geofenceRadiusMeters)} advisory geofence · return corridor` : displayReference ? 'Local reference is browser only' : 'Waiting for reported home'}</small>
         </div>
       </div>
       {!hasFix && position && <p className="fcc-nav-map__stale" role="status">{gpsLabel}. Aircraft marker holds the last valid position from {new Date(position.timestamp).toLocaleTimeString()}.</p>}
